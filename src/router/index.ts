@@ -14,16 +14,16 @@ const router = createRouter({
       meta: {
         title: '申辦服務'
       },
-      component: HomeView
-    },
-    {
-      path: '/surrounding-service',
-      name: 'surrounding-service',
-      meta: {
-        title: '周邊服務'
-      },
       component: SurroundingServiceView
     }
+    // {
+    //   path: '/surrounding-service',
+    //   name: 'surrounding-service',
+    //   meta: {
+    //     title: '周邊服務'
+    //   },
+    //   component: SurroundingServiceView
+    // }
   ]
 });
 

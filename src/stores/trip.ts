@@ -20,11 +20,10 @@ export interface SavedTrip {
   pinToHome?: boolean;
 }
 
-export interface HistoryTrip {
+export interface HistoryStation {
   id: string;
   time: string; // ISO string
-  origin: { name: string; lat?: number; lng?: number; address?: string } | null;
-  destination: { name: string; lat?: number; lng?: number; address?: string } | null;
+  place: { name: string; lat?: number; lng?: number; address?: string } | null;
 }
 
 export const useTripStore = defineStore('trip', () => {
@@ -39,7 +38,7 @@ export const useTripStore = defineStore('trip', () => {
     {
       id: crypto.randomUUID(),
       name: '回家路線',
-      origin: { name: '市政府捷運站', lat: 25.040, lng: 121.566 },
+      origin: { name: '市政府捷運站', lat: 25.04, lng: 121.566 },
       destination: { name: '信義區某住家', lat: 25.033, lng: 121.564 },
       pinToHome: true
     },
@@ -58,24 +57,21 @@ export const useTripStore = defineStore('trip', () => {
       pinToHome: false
     }
   ]);
-  const histories = ref<HistoryTrip[]>([
+  const histories = ref<HistoryStation[]>([
     {
       id: crypto.randomUUID(),
       time: new Date().toISOString(),
-      origin: { name: '南港展覽館', lat: 25.056, lng: 121.617 },
-      destination: { name: '松山機場', lat: 25.069, lng: 121.552 }
+      place: { name: '南港展覽館', lat: 25.056, lng: 121.617 }
     },
     {
       id: crypto.randomUUID(),
       time: new Date(Date.now() - 3600_000).toISOString(),
-      origin: { name: '內湖科學園區', lat: 25.079, lng: 121.575 },
-      destination: { name: '饒河街觀光夜市', lat: 25.050, lng: 121.578 }
+      place: { name: '松山機場', lat: 25.069, lng: 121.552 }
     },
     {
       id: crypto.randomUUID(),
       time: new Date(Date.now() - 7200_000).toISOString(),
-      origin: { name: '台北車站', lat: 25.0478, lng: 121.5170 },
-      destination: { name: '台大公館', lat: 25.015, lng: 121.534 }
+      place: { name: '台北車站', lat: 25.0478, lng: 121.517 }
     }
   ]);
 
@@ -98,10 +94,25 @@ export const useTripStore = defineStore('trip', () => {
     }
   };
 
-  const addHistory = (trip: Omit<HistoryTrip, 'id' | 'time'>) => {
-    histories.value.unshift({ id: crypto.randomUUID(), time: new Date().toISOString(), ...trip });
+  const addHistory = (entry: Omit<HistoryStation, 'id' | 'time'>) => {
+    if (!entry.place?.name) return;
+    const key = `${entry.place.name}|${entry.place.lat ?? ''}|${entry.place.lng ?? ''}`;
+    // 先移除相同 key 的舊項目，確保 Ordered Set
+    const idx = histories.value.findIndex((h) => {
+      const k = `${h.place?.name}|${h.place?.lat ?? ''}|${h.place?.lng ?? ''}`;
+      return k === key;
+    });
+    if (idx >= 0) histories.value.splice(idx, 1);
+    histories.value.unshift({ id: crypto.randomUUID(), time: new Date().toISOString(), ...entry });
     // 僅保留最近 20 筆
     histories.value.splice(20);
+  };
+
+  const deleteFavorite = (id: string) => {
+    const i = favorites.value.findIndex((f) => f.id === id);
+    if (i >= 0) {
+      favorites.value.splice(i, 1);
+    }
   };
 
   return {
@@ -111,8 +122,7 @@ export const useTripStore = defineStore('trip', () => {
     setShortcutDestination,
     addFavorite,
     updateFavorite,
+    deleteFavorite,
     addHistory
   };
 });
-
-

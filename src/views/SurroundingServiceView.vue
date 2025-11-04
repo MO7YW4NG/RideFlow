@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import FindPlace, { type Place } from '@/components/molecules/FindPlace.vue';
 import SpotList from '@/components/organisms/SpotListView.vue';
 import SpotDetail from '@/components/organisms/SpotDetailView.vue';
 import MessageModal from '@/components/molecules/MessageModal.vue';
 import BaseInput from '@/components/atoms/BaseInput.vue';
-import BaseButton from '@/components/atoms/BaseButton.vue';
-import CollapseItem from '@/components/molecules/CollapseItem.vue';
 import BaseDialog from '@/components/atoms/BaseDialog.vue';
 import { useGoogleMapsStore } from '@/stores/googleMaps';
 import { useTripStore } from '@/stores/trip';

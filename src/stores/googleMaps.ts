@@ -1,11 +1,11 @@
-import { reactive, ref } from 'vue';
+import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { Loader } from '@googlemaps/js-api-loader';
 
 export const useGoogleMapsStore = defineStore('googleMaps', () => {
   const loader = new Loader({
     // 替換成您的 API KEY
-    apiKey: '',
+    apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     version: 'weekly',
     libraries: ['places', 'geometry']
   });

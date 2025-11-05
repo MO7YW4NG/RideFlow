@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import SurroundingServiceView from '../views/SurroundingServiceView.vue';
+import AnalysisLoadingView from '../views/AnalysisLoadingView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,6 +15,14 @@ const router = createRouter({
         title: '騎妙 RideFlow'
       },
       component: SurroundingServiceView
+    },
+    {
+      path: '/analysis-loading',
+      name: 'analysis-loading',
+      meta: {
+        title: '分析中...'
+      },
+      component: AnalysisLoadingView
     }
   ]
 });

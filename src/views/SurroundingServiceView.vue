@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import MessageModal from '@/components/molecules/MessageModal.vue';
 import BaseDialog from '@/components/atoms/BaseDialog.vue';
-import MultiStepLoader from '@/components/ui/MultiStepLoader.vue';
-import type { Step } from '@/components/ui/MultiStepLoader.vue';
+import { useRouter } from 'vue-router';
 import { useGoogleMapsStore } from '@/stores/googleMaps';
 import { useTripStore } from '@/stores/trip';
 import type { HistoryStation, SavedTrip } from '@/stores/trip';
@@ -86,6 +85,7 @@ export interface Spot {
   [key: string]: any;
 }
 
+const router = useRouter();
 const googleMapsStore = useGoogleMapsStore();
 const tripStore = useTripStore();
 
@@ -134,32 +134,6 @@ const newFavoriteName = ref('');
 const pinToHome = ref(false);
 const activeList = ref<'history' | 'favorite'>('history');
 const editingFavorite = ref<SavedTrip | null>(null);
-
-// MultiStepLoader 狀態
-const isLoading = ref(false);
-const analysisSteps = ref<Step[]>([
-  {
-    text: '行程路徑分析...',
-    duration: 1500
-  },
-  {
-    text: '天氣與空污資料蒐集...',
-    duration: 2000
-  },
-  {
-    text: '見車率與見位率分析...',
-    duration: 2000
-  },
-  {
-    text: 'AI預測目的地車位數量...',
-    duration: 2000
-  },
-  {
-    text: '適合度計算分析...',
-    duration: 1500,
-    afterText: '分析完成！'
-  }
-]);
 
 const saveFavorite = () => {
   if (!newFavoriteName.value) return;
@@ -982,32 +956,18 @@ const onSwitchOriginDestination = () => {
 
 // 確定行程，開始分析
 const confirmRoute = () => {
-  // 啟動 MultiStepLoader 動畫
-  isLoading.value = true;
-  console.log('確定行程，開始分析', {
-    origin: originPlace.value,
-    destination: destinationPlace.value
+  // 跳轉到分析載入頁面
+  router.push({
+    name: 'analysis-loading',
+    query: {
+      origin: originPlace.value?.name || '',
+      destination: destinationPlace.value?.name || '',
+      originLat: originPlace.value?.lat?.toString() || '',
+      originLng: originPlace.value?.lng?.toString() || '',
+      destLat: destinationPlace.value?.lat?.toString() || '',
+      destLng: destinationPlace.value?.lng?.toString() || ''
+    }
   });
-};
-
-// 處理 MultiStepLoader 完成事件
-const handleAnalysisComplete = () => {
-  console.log('分析完成！');
-  // 可以在這裡執行完成後的操作
-  setTimeout(() => {
-    isLoading.value = false;
-    // TODO: 可以跳轉到結果頁面或顯示分析結果
-  }, 1000);
-};
-
-// 處理 MultiStepLoader 關閉事件
-const handleAnalysisClose = () => {
-  isLoading.value = false;
-};
-
-// 處理 MultiStepLoader 狀態變化
-const handleAnalysisStateChange = (index: number) => {
-  console.log(`當前分析步驟: ${index + 1}`);
 };
 
 // 重新規劃：清空起點和終點
@@ -1542,17 +1502,6 @@ const replanRoute = () => {
     <template #default></template>
     <template #footer></template>
   </BaseDialog>
-
-  <!-- MultiStepLoader 組件 -->
-  <MultiStepLoader
-    :loading="isLoading"
-    :steps="analysisSteps"
-    :default-duration="1500"
-    :prevent-close="false"
-    @complete="handleAnalysisComplete"
-    @close="handleAnalysisClose"
-    @state-change="handleAnalysisStateChange"
-  />
 </template>
 
 <style lang="postcss" scoped>

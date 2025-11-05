@@ -237,7 +237,8 @@ watch(
     } else if (currentTimer) {
       clearTimeout(currentTimer);
     }
-  }
+  },
+  { immediate: true }
 );
 
 onUnmounted(() => {

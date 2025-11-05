@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import MessageModal from '@/components/molecules/MessageModal.vue';
-import BaseInput from '@/components/atoms/BaseInput.vue';
 import BaseDialog from '@/components/atoms/BaseDialog.vue';
 import { useGoogleMapsStore } from '@/stores/googleMaps';
 import { useTripStore } from '@/stores/trip';
-import type { HistoryStation, ShortcutTrip, SavedTrip } from '@/stores/trip';
+import type { HistoryStation, SavedTrip } from '@/stores/trip';
 import axios from 'axios';
 import { onMounted, onUnmounted, ref, watch, nextTick, computed } from 'vue';
 import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock';
@@ -15,6 +14,9 @@ import redDotIconUrl from '/public/images/map/youbike/mappin-red.svg';
 import greenYouBikeIconUrl from '/public/images/map/youbike/icon_mappin-ubike-green-pressed.svg';
 import yellowYouBikeIconUrl from '/public/images/map/youbike/icon_mappin-ubike-yellow-pressed.svg';
 import redYouBikeIconUrl from '/public/images/map/youbike/icon_mappin-ubike-red-pressed.svg';
+
+import iconOriginUrl from '@/assets/images/icon-origin.svg';
+import iconDestUrl from '@/assets/images/icon-dest.svg';
 
 export interface Spot {
   /** 站點編號 */
@@ -104,12 +106,20 @@ let directionsRenderer: google.maps.DirectionsRenderer | null = null;
 // 起點/目的地輸入與資料
 const originInput = ref('');
 const destinationInput = ref('');
-const originPlace = ref<{ name: string; lat?: number; lng?: number; address?: string } | null>(
-  null
-);
-const destinationPlace = ref<{ name: string; lat?: number; lng?: number; address?: string } | null>(
-  null
-);
+const originPlace = ref<{
+  id: string;
+  name: string;
+  lat?: number;
+  lng?: number;
+  address?: string;
+} | null>(null);
+const destinationPlace = ref<{
+  id: string;
+  name: string;
+  lat?: number;
+  lng?: number;
+  address?: string;
+} | null>(null);
 const originInputEl = ref<HTMLInputElement | null>(null);
 const destinationInputEl = ref<HTMLInputElement | null>(null);
 
@@ -150,6 +160,25 @@ const saveFavorite = () => {
   editingFavorite.value = null;
 };
 
+const deleteFavorite = () => {
+  if (editingFavorite.value) {
+    tripStore.deleteFavorite(editingFavorite.value.id);
+  }
+  showFavoriteDialog.value = false;
+  newFavoriteName.value = '';
+  pinToHome.value = false;
+  editingFavorite.value = null;
+};
+
+// 顯示在 Favorite 對話框中的起點/終點欄位：
+// 若使用者在編輯過程已重新選取，優先顯示新選取；否則顯示原資料
+const favoriteOriginName = computed(
+  () => originPlace.value?.name || editingFavorite.value?.origin?.name || ''
+);
+const favoriteDestinationName = computed(
+  () => destinationPlace.value?.name || editingFavorite.value?.destination?.name || ''
+);
+
 /**
  * 目前位置
  */
@@ -169,9 +198,13 @@ let isShowGeoError = ref(false);
 const loadYouBikeData = async () => {
   try {
     const response = await axios.get('/mock/youbike_mock_data.json');
-    // 將資料轉換為 Spot 格式，確保 lat/lng 統一
+    // 將資料轉換為 Spot 格式，確保 lat/lng 統一，並預處理站名 sna（保留第一個 "_" 之後的字串）
     searchSpotList.value = (response.data as any[]).map((item) => ({
       ...item,
+      sna:
+        typeof item.sna === 'string' && item.sna.includes('_')
+          ? item.sna.substring(item.sna.indexOf('_') + 1)
+          : item.sna,
       lat: item.latitude ?? (typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat ?? 0),
       lng: item.longitude ?? (typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng ?? 0)
     }));
@@ -349,11 +382,13 @@ const initMap = (lat: number, lng: number) => {
 
     // 在地圖的dragend事件上使用該函數
     map.addListener('dragend', function () {
+      if (isRouteReady.value) return; // 路線顯示時，不更新站點標記
       updateMarkers();
     });
 
     // // 在地圖的zoom_changed事件上使用該函數
     map.addListener('zoom_changed', function () {
+      if (isRouteReady.value) return; // 路線顯示時，不更新站點標記
       updateMarkers();
     });
 
@@ -446,7 +481,7 @@ const updateMarkers = async () => {
       )
     }));
 
-  console.log('filteredSpotList:', filteredSpotList.value);
+  // console.log('filteredSpotList:', filteredSpotList.value);
 
   // Clear existing markers
   clearMarkers();
@@ -462,9 +497,9 @@ const updateMarkers = async () => {
     if (availableRentBikes !== 0 && availableReturnBikes !== 0) {
       return focused ? greenYouBikeIconUrl : greenDotIconUrl;
     } else if (availableRentBikes === 0) {
-      return focused ? redYouBikeIconUrl : redDotIconUrl;
-    } else {
       return focused ? yellowYouBikeIconUrl : yellowDotIconUrl;
+    } else {
+      return focused ? redYouBikeIconUrl : redDotIconUrl;
     }
   };
 
@@ -576,12 +611,13 @@ const selectCurrentSpot = () => {
 
   const spot = selectedSpot.value;
   const placeData = {
+    id: String(spot.sno),
     name: spot.sna,
     lat: typeof spot.lat === 'number' ? spot.lat : spot.latitude ?? 0,
     lng: typeof spot.lng === 'number' ? spot.lng : spot.longitude ?? 0,
     address: spot.ar
   };
-
+  if (originPlace.value === destinationPlace.value && originPlace.value !== null) return;
   if (selectedDest.value) {
     // 設置為終點
     destinationPlace.value = placeData;
@@ -616,24 +652,18 @@ const tryRoute = () => {
     position: { lat: Number(originPlace.value.lat), lng: Number(originPlace.value.lng) },
     map,
     icon: {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 6,
-      fillColor: '#34A853',
-      fillOpacity: 1,
-      strokeWeight: 2,
-      strokeColor: '#fff'
+      url: iconOriginUrl,
+      scaledSize: new google.maps.Size(48, 69), // 設置圖標的大小
+      anchor: new google.maps.Point(24, 69) // 設置圖標的錨點，使其中心對齊底部
     }
   });
   const endMarker = new google.maps.Marker({
     position: { lat: Number(destinationPlace.value.lat), lng: Number(destinationPlace.value.lng) },
     map,
     icon: {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 6,
-      fillColor: '#EA4335',
-      fillOpacity: 1,
-      strokeWeight: 2,
-      strokeColor: '#fff'
+      url: iconDestUrl,
+      scaledSize: new google.maps.Size(48, 69), // 設置圖標的大小
+      anchor: new google.maps.Point(24, 69) // 設置圖標的錨點，使其中心對齊底部
     }
   });
   markers.push(startMarker, endMarker);
@@ -726,15 +756,12 @@ const setupAddressSearch = () => {
   }
 };
 
-const applyShortcut = (s: ShortcutTrip) => {
-  if (!s?.destination?.lat || !s?.destination?.lng || !s?.destination?.name) return;
-  destinationPlace.value = {
-    name: s.destination.name as string,
-    lat: s.destination.lat,
-    lng: s.destination.lng,
-    address: s.destination.address
-  };
-  destinationInput.value = s.destination.name as string;
+const applyShortcut = (s: SavedTrip) => {
+  if (!s.origin || !s.destination) return;
+  originPlace.value = s.origin;
+  originInput.value = s.origin.name;
+  destinationPlace.value = s.destination;
+  destinationInput.value = s.destination.name;
   selectedDest.value = true;
   tryRoute();
 };
@@ -742,17 +769,17 @@ const applyShortcut = (s: ShortcutTrip) => {
 // 歷史站點：點擊後根據 selectedDest 填入起點或終點
 const applyHistoryStation = (h: HistoryStation) => {
   if (!h.place) return;
-
   if (selectedDest.value) {
+    if (originPlace.value === h.place) return;
     // 設置為終點
-    destinationPlace.value = h.place;
+    destinationPlace.value = h.place as any;
     destinationInput.value = h.place.name || '';
   } else {
+    if (destinationPlace.value === h.place) return;
     // 設置為起點
-    originPlace.value = h.place;
+    originPlace.value = h.place as any;
     originInput.value = h.place.name || '';
   }
-
   selectedDest.value = !selectedDest.value;
 
   // 如果起點和終點都已設定，嘗試規劃路線
@@ -773,8 +800,6 @@ const applyFavorite = (f: any) => {
 const openEditFavorite = (f: SavedTrip) => {
   editingFavorite.value = f;
   newFavoriteName.value = f.name;
-  originInput.value = f.origin?.name || '';
-  destinationInput.value = f.destination?.name || '';
   pinToHome.value = !!f.pinToHome;
   showFavoriteDialog.value = true;
 };
@@ -806,6 +831,24 @@ const ensureMeta = (id: string) => {
     };
   }
   return favoriteDragState.value[id];
+};
+
+// 依站點 id 取得 YouBike 站點資料（從 mock 載入的 searchSpotList）
+const spotById = (id: string) =>
+  searchSpotList.value.find((s: any) => String(s.sno ?? s.id) === String(id));
+
+// 計算目前位置到指定座標的距離（公里）
+const distanceKm = (lat1: number, lng1: number, lat2?: number, lng2?: number) => {
+  if (lat2 == null || lng2 == null) return null;
+  const R = 6371; // km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 };
 
 const onFavPointerDown = (e: PointerEvent, id: string) => {
@@ -1000,7 +1043,7 @@ const replanRoute = () => {
                 class="px-3 py-1 bg-white text-primary-500 font-bold rounded-full border-2 border-primary-300 shadow-sm"
                 @click="() => applyShortcut(s)"
               >
-                {{ s.label }}
+                {{ s.name }}
               </button>
             </div>
 
@@ -1018,10 +1061,12 @@ const replanRoute = () => {
                 </template>
                 <div class="flex flex-col items-center justify-center w-full">
                   <div
-                    class="rounded-lg p-2 bg-white cursor-pointer transition-colors w-full"
+                    class="rounded-lg p-2 cursor-pointer transition-colors w-full"
                     :class="{
-                      'border-2 border-primary-500': !selectedDest,
-                      'border-2 border-transparent': selectedDest
+                      // 'border-2 border-primary-500': !selectedDest,
+                      // 'border-2 border-transparent': selectedDest
+                      'bg-white': selectedDest,
+                      'bg-primary-50': !selectedDest
                     }"
                     @click="selectedDest = false"
                   >
@@ -1030,16 +1075,18 @@ const replanRoute = () => {
                       ref="originInputEl"
                       v-model="originInput"
                       placeholder="點按以選擇起始站"
-                      class="w-full bg-white outline-none"
+                      class="w-full bg-transparent outline-none"
                       @click.stop="selectedDest = false"
                     />
                   </div>
                   <!-- <div class="mx-2 h-0.5 w-full bg-grey-200"></div> -->
                   <div
-                    class="rounded-lg p-2 mx-2 bg-white cursor-pointer transition-colors w-full"
+                    class="rounded-lg p-2 mx-2 cursor-pointer transition-colors w-full"
                     :class="{
-                      'border-2 border-primary-500': selectedDest,
-                      'border-2 border-transparent': !selectedDest
+                      // 'border-2 border-primary-500': selectedDest,
+                      // 'border-2 border-transparent': !selectedDest
+                      'bg-primary-50': selectedDest,
+                      'bg-white': !selectedDest
                     }"
                     @click="selectedDest = true"
                   >
@@ -1048,7 +1095,7 @@ const replanRoute = () => {
                       ref="destinationInputEl"
                       v-model="destinationInput"
                       placeholder="點按以選擇終點站"
-                      class="w-full bg-white outline-none"
+                      class="w-full bg-transparent outline-none"
                       @click.stop="selectedDest = true"
                     />
                   </div>
@@ -1162,10 +1209,80 @@ const replanRoute = () => {
                     @click="() => applyHistoryStation(h)"
                   >
                     <div>
-                      <div class="text-grey-900 font-extrabold">{{ h.place?.name }}</div>
+                      <div class="text-grey-900 font-extrabold">
+                        {{ h.place?.name }}
+                      </div>
                       <div class="text-grey-500 text-sm flex items-center">
-                        <img src="@/assets/images/icon-map.svg" class="w-4 h-4 mr-1" />
-                        <span>{{ h.place?.name }}</span>
+                        <span
+                          v-if="
+                            distanceKm(
+                              currentLocation.lat,
+                              currentLocation.lng,
+                              Number(spotById(h.id)?.lat as any),
+                              Number(spotById(h.id)?.lng as any)
+                            ) !== null
+                          "
+                        >
+                          {{
+                            distanceKm(
+                              currentLocation.lat,
+                              currentLocation.lng,
+                              Number(spotById(h.id)?.lat as any),
+                              Number(spotById(h.id)?.lng as any)
+                            )?.toFixed(1)
+                          }}
+                          <span>公里</span>
+                        </span>
+                        <span class="mx-2">|</span>
+                        <span class="flex">
+                          <template
+                            v-if="
+                              (spotById(h.id)?.available_rent_bikes ?? 0) !== 0 &&
+                              (spotById(h.id)?.available_return_bikes ?? 0) !== 0
+                            "
+                          >
+                            <img
+                              src="/public/images/map/youbike/icon-info-ubike-green.svg"
+                              alt=""
+                            />
+                            <span class="ml-1 text-[#76A732]">正常租借</span>
+                          </template>
+                          <template v-else-if="(spotById(h.id)?.available_rent_bikes ?? 0) === 0">
+                            <img
+                              src="/public/images/map/youbike/icon-info-ubike-yellow.svg"
+                              alt=""
+                            />
+                            <span class="ml-1 text-secondary-500">無車可借</span>
+                          </template>
+                          <template v-else-if="(spotById(h.id)?.available_return_bikes ?? 0) === 0">
+                            <img src="/public/images/map/youbike/icon-info-ubike-red.svg" alt="" />
+                            <span class="ml-1 text-[#E5464B]"> 車位滿載</span>
+                          </template>
+                        </span>
+                        <span class="mx-2">|</span>
+                        <span>
+                          <span class="text-grey-500 mr-1">可借</span>
+                          <span
+                            class="mr-1"
+                            :class="
+                              (spotById(h.id)?.available_rent_bikes ?? 0) === 0
+                                ? 'text-secondary-500'
+                                : 'text-[#76A732]'
+                            "
+                          >
+                            {{ spotById(h.id)?.available_rent_bikes ?? 0 }}
+                          </span>
+                          <span class="text-grey-500 mr-1">可停</span>
+                          <span
+                            :class="
+                              (spotById(h.id)?.available_return_bikes ?? 0) === 0
+                                ? 'text-[#E5464B]'
+                                : 'text-grey-950'
+                            "
+                          >
+                            {{ spotById(h.id)?.available_return_bikes ?? 0 }}
+                          </span>
+                        </span>
                       </div>
                     </div>
                   </li>
@@ -1177,7 +1294,7 @@ const replanRoute = () => {
                   <li
                     v-for="f in tripStore.favorites"
                     :key="f.id"
-                    class="relative overflow-hidden"
+                    class="relative overflow-hidden cursor-pointer"
                     @click="onFavoriteItemClick(f)"
                   >
                     <!-- Delete Underlay -->
@@ -1208,7 +1325,6 @@ const replanRoute = () => {
                       <div>
                         <div class="text-grey-900 font-extrabold">{{ f.name }}</div>
                         <div class="text-grey-500 text-sm flex items-center">
-                          <img src="@/assets/images/icon-map.svg" class="w-4 h-4 mr-1" />
                           <span>{{ f.origin?.name }}</span>
                           <span class="mx-1">→</span>
                           <span>{{ f.destination?.name }}</span>
@@ -1225,7 +1341,7 @@ const replanRoute = () => {
                       @click="() => (showFavoriteDialog = true)"
                     >
                       <img src="@/assets/images/icon-add.svg" class="w-4 h-4" />
-                      <span class="font-bold">新增常用行程</span>
+                      <span class="font-bold text-primary-500">新增常用行程</span>
                     </button>
                   </li>
                 </template>
@@ -1321,26 +1437,56 @@ const replanRoute = () => {
     is-slot
     content=""
     positive-text="儲存"
-    negative-text="取消"
+    negative-text="刪除"
+    is-favorite-dialog
     @onPositiveClick="saveFavorite"
+    @onNegativeClick="deleteFavorite"
   >
     <template #content>
-      <div class="space-y-3">
-        <div>
-          <label class="text-sm text-grey-600">行程名稱</label>
-          <BaseInput v-model="newFavoriteName" placeholder="輸入名稱" class="w-full" />
-        </div>
-        <div>
-          <label class="text-sm text-grey-600">起點</label>
-          <BaseInput v-model="originInput" placeholder="輸入/選擇 起始地點" class="w-full" />
-        </div>
-        <div>
-          <label class="text-sm text-grey-600">目的地</label>
-          <BaseInput v-model="destinationInput" placeholder="輸入/選擇 目的地" class="w-full" />
-        </div>
-        <div class="flex items-center gap-2">
-          <input id="pinHome" type="checkbox" v-model="pinToHome" />
-          <label for="pinHome" class="text-sm">釘選到主頁</label>
+      <div class="favorite-dialog-content">
+        <!-- 標題 -->
+        <h2 class="favorite-dialog-title">新增常用行程</h2>
+
+        <!-- 表單內容 -->
+        <div class="favorite-dialog-form">
+          <div class="favorite-dialog-field">
+            <label class="favorite-dialog-label">行程名稱</label>
+            <input
+              v-model="newFavoriteName"
+              type="text"
+              placeholder="如:回溫暖ㄉ家"
+              class="favorite-dialog-input"
+            />
+          </div>
+          <div class="favorite-dialog-field">
+            <label class="favorite-dialog-label">起始點</label>
+            <input
+              :value="favoriteOriginName"
+              type="text"
+              placeholder="點選以輸入"
+              class="favorite-dialog-input"
+              readonly
+            />
+          </div>
+          <div class="favorite-dialog-field">
+            <label class="favorite-dialog-label">終點站</label>
+            <input
+              :value="favoriteDestinationName"
+              type="text"
+              placeholder="點選以輸入"
+              class="favorite-dialog-input"
+              readonly
+            />
+          </div>
+          <div class="favorite-dialog-checkbox">
+            <input
+              id="pinHome"
+              type="checkbox"
+              v-model="pinToHome"
+              class="favorite-dialog-checkbox-input"
+            />
+            <label for="pinHome" class="favorite-dialog-checkbox-label">釘選至主頁</label>
+          </div>
         </div>
       </div>
     </template>
@@ -1390,5 +1536,95 @@ const replanRoute = () => {
 
 .sheet-card {
   position: relative;
+}
+
+/* 新增常用行程 Dialog 樣式 */
+.favorite-dialog-content {
+  background-color: transparent;
+}
+
+.favorite-dialog-title {
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #171b1d; /* grey-900 */
+  padding: 20px 16px 16px 16px;
+  margin: 0;
+}
+
+.favorite-dialog-form {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.favorite-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.favorite-dialog-label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #171b1d; /* grey-900 */
+  text-align: left;
+}
+
+.favorite-dialog-input {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: white;
+  border: 1px solid #adb8be; /* grey-300 */
+  border-radius: 8px;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.favorite-dialog-input::placeholder {
+  color: #adb8be; /* grey-300 */
+}
+
+.favorite-dialog-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.favorite-dialog-checkbox-input {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #adb8be;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.favorite-dialog-checkbox-input:checked {
+  background-color: #2eb6c7; /* primary-500 */
+  border-color: #2eb6c7;
+}
+
+.favorite-dialog-checkbox-input:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.favorite-dialog-checkbox-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #2eb6c7; /* grey-900 */
+  cursor: pointer;
 }
 </style>

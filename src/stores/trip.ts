@@ -1,22 +1,13 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 
-export interface ShortcutTrip {
-  id: string;
-  label: string; // e.g. 回家、上學、打工
-  destination: {
-    name: string;
-    lat?: number;
-    lng?: number;
-    address?: string;
-  } | null;
-}
+// Shortcut 與 SavedTrip 統一：由 SavedTrip 中 pinToHome=true 的項目衍生
 
 export interface SavedTrip {
   id: string;
   name: string; // 行程名稱
-  origin: { name: string; lat?: number; lng?: number; address?: string } | null;
-  destination: { name: string; lat?: number; lng?: number; address?: string } | null;
+  origin: { id: string; name: string; lat?: number; lng?: number; address?: string } | null;
+  destination: { id: string; name: string; lat?: number; lng?: number; address?: string } | null;
   pinToHome?: boolean;
 }
 
@@ -27,61 +18,51 @@ export interface HistoryStation {
 }
 
 export const useTripStore = defineStore('trip', () => {
-  // 預設三個快捷按鈕（可由後端/使用者設定覆蓋）
-  const shortcuts = ref<ShortcutTrip[]>([
-    { id: 'home', label: '回家', destination: null },
-    { id: 'school', label: '上學', destination: null },
-    { id: 'work', label: '打工', destination: null }
-  ]);
+  // 快捷按鈕改為由 favorites 衍生（pinToHome=true）
+  const shortcuts = computed(() => favorites.value.filter((f) => f.pinToHome));
 
   const favorites = ref<SavedTrip[]>([
     {
       id: crypto.randomUUID(),
-      name: '回家路線',
-      origin: { name: '市政府捷運站', lat: 25.04, lng: 121.566 },
-      destination: { name: '信義區某住家', lat: 25.033, lng: 121.564 },
+      name: '回家',
+      origin: { id: '500119047', name: '臺大土木系館', lat: 25.01761, lng: 121.53844 },
+      destination: { id: '500101022', name: '捷運公館站(2號出口)', lat: 25.01491, lng: 121.53438 },
       pinToHome: true
     },
     {
       id: crypto.randomUUID(),
-      name: '上學路線',
-      origin: { name: '民生社區', lat: 25.058, lng: 121.554 },
-      destination: { name: '台科大', lat: 25.013, lng: 121.541 },
-      pinToHome: false
+      name: '上學',
+      origin: { id: '500106143', name: '螢橋國中', lat: 25.01933, lng: 25.01933 },
+      destination: { id: '500106007', name: '捷運臺電大樓站(1號出口)', lat: 25.0197, lng: 121.529 },
+      pinToHome: true
     },
     {
       id: crypto.randomUUID(),
-      name: '打工路線',
-      origin: { name: '古亭站', lat: 25.026, lng: 121.522 },
-      destination: { name: '西門町', lat: 25.043, lng: 121.507 },
-      pinToHome: false
+      name: '打工',
+      origin: { id: '500101001', name: '捷運科技大樓站', lat: 25.02605, lng: 121.5436 },
+      destination: { id: '500101199', name: '和平新生路口西南側', lat: 25.02604, lng: 121.534 },
+      pinToHome: true
     }
   ]);
   const histories = ref<HistoryStation[]>([
     {
-      id: crypto.randomUUID(),
+      id: '500119065',
       time: new Date().toISOString(),
-      place: { name: '南港展覽館', lat: 25.056, lng: 121.617 }
+      place: { name: '臺大二號館', lat: 25.01699, lng: 121.53574 }
     },
     {
-      id: crypto.randomUUID(),
+      id: '500119089',
       time: new Date(Date.now() - 3600_000).toISOString(),
-      place: { name: '松山機場', lat: 25.069, lng: 121.552 }
+      place: { name: '臺大獸醫館南側', lat: 25.01791, lng: 121.54242 }
     },
     {
-      id: crypto.randomUUID(),
+      id: '500101207',
       time: new Date(Date.now() - 7200_000).toISOString(),
-      place: { name: '台北車站', lat: 25.0478, lng: 121.517 }
+      place: { name: '捷運臺電大樓站(2號出口)_1', lat: 25.02055, lng: 121.52855 }
     }
   ]);
 
-  const setShortcutDestination = (
-    id: string,
-    destination: NonNullable<ShortcutTrip['destination']>
-  ) => {
-    const target = shortcuts.value.find((s) => s.id === id);
-    if (target) target.destination = destination;
-  };
+  // 不再直接設定 shortcuts，請透過更新 favorite 的 pinToHome 或內容來影響
 
   const addFavorite = (trip: SavedTrip) => {
     favorites.value.unshift({ ...trip, id: crypto.randomUUID() });
@@ -94,18 +75,20 @@ export const useTripStore = defineStore('trip', () => {
     }
   };
 
-  const addHistory = (entry: Omit<HistoryStation, 'id' | 'time'>) => {
+  const addHistory = (entry: Omit<HistoryStation, 'id' | 'time'>, stationId?: string) => {
     if (!entry.place?.name) return;
-    const key = `${entry.place.name}|${entry.place.lat ?? ''}|${entry.place.lng ?? ''}`;
     // 先移除相同 key 的舊項目，確保 Ordered Set
     const idx = histories.value.findIndex((h) => {
-      const k = `${h.place?.name}|${h.place?.lat ?? ''}|${h.place?.lng ?? ''}`;
-      return k === key;
+      return h.id === stationId;
     });
     if (idx >= 0) histories.value.splice(idx, 1);
-    histories.value.unshift({ id: crypto.randomUUID(), time: new Date().toISOString(), ...entry });
-    // 僅保留最近 20 筆
-    histories.value.splice(20);
+    histories.value.unshift({
+      id: stationId ?? (entry as any).place?.id ?? entry.place.name,
+      time: new Date().toISOString(),
+      ...entry
+    });
+    // 僅保留最近 10 筆
+    histories.value.splice(10);
   };
 
   const deleteFavorite = (id: string) => {
@@ -119,7 +102,6 @@ export const useTripStore = defineStore('trip', () => {
     shortcuts,
     favorites,
     histories,
-    setShortcutDestination,
     addFavorite,
     updateFavorite,
     deleteFavorite,

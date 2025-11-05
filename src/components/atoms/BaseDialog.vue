@@ -10,6 +10,7 @@ const props = defineProps<{
   isAlert?: boolean;
   isCheck?: boolean;
   isError?: boolean;
+  isFavoriteDialog?: boolean; // 新增常用行程 Dialog 樣式
 }>();
 
 const emit = defineEmits(['onPositiveClick', 'onNegativeClick']);
@@ -19,7 +20,9 @@ const isOpen = defineModel({ default: false });
 const setIsOpen = () => {
   isOpen.value = true;
 };
-
+const closeDialog = () => {
+  isOpen.value = false;
+};
 const onPositiveClick = () => {
   isOpen.value = false;
   emit('onPositiveClick');
@@ -34,7 +37,7 @@ const onNegativeClick = () => {
 <template>
   <TransitionRoot appear :show="isOpen" as="template">
     <Dialog as="div" :open="isOpen" @close="setIsOpen" class="relative z-[9999]">
-      <div class="fixed inset-0 bg-black/25">
+      <div class="fixed inset-0 bg-black/25" @click="closeDialog">
         <div class="min-h-full flex justify-center items-center">
           <TransitionChild
             as="template"
@@ -46,7 +49,9 @@ const onNegativeClick = () => {
             leave-to="opacity-0 scale-95"
           >
             <DialogPanel
-              class="w-4/5 max-w-screen-md flex flex-col transform overflow-y-auto bg-white transition-all rounded pt-4"
+              :class="[
+                'w-4/5 max-w-screen-md flex flex-col transform overflow-y-auto transition-all bg-white pt-4 rounded-xl'
+              ]"
             >
               <div v-if="props.isAlert" class="flex justify-center">
                 <img src="@/assets/images/alert-icon.svg" class="w-24" />
@@ -61,28 +66,29 @@ const onNegativeClick = () => {
                 {{ title }}
               </DialogTitle>
 
-              <div class="px-4 my-5">
+              <div :class="props.isFavoriteDialog ? '' : 'px-4 my-5'">
                 <p v-if="!props.isSlot" class="text-center font-bold whitespace-pre-line">
                   {{ props.content }}
                 </p>
                 <slot v-else name="content"></slot>
               </div>
 
-              <div
-                class="mt-auto py-1 border-t-gray-200 border-t"
-                :class="{ 'grid grid-cols-2': negativeText }"
-              >
+              <div :class="['mt-auto py-2 my-2 grid grid-cols-2 px-8 gap-8']">
                 <button
                   v-if="props.negativeText"
                   type="button"
-                  class="flex justify-center text-gray-500 font-bold w-full py-1 outline-none"
+                  :class="[
+                    'flex justify-center items-center font-bold outline-none text-warn-200 py-2'
+                  ]"
                   @click="onNegativeClick"
                 >
                   {{ negativeText }}
                 </button>
                 <button
                   type="button"
-                  class="flex justify-center text-primary-500 font-bold w-full py-1 outline-none"
+                  :class="[
+                    'flex justify-center items-center font-bold outline-none text-primary-500 py-2 border-2 rounded-lg bg-primary-100'
+                  ]"
                   @click="onPositiveClick"
                 >
                   {{ positiveText || '確認' }}

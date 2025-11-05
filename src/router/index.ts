@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router';
-// import HomeView from '../views/HomeView.vue';
 import SurroundingServiceView from '../views/SurroundingServiceView.vue';
 
 const router = createRouter({
@@ -12,18 +11,10 @@ const router = createRouter({
       path: '/',
       name: 'home',
       meta: {
-        title: '申辦服務'
+        title: '騎妙 RideFlow'
       },
       component: SurroundingServiceView
     }
-    // {
-    //   path: '/surrounding-service',
-    //   name: 'surrounding-service',
-    //   meta: {
-    //     title: '周邊服務'
-    //   },
-    //   component: SurroundingServiceView
-    // }
   ]
 });
 

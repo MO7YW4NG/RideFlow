@@ -3,12 +3,32 @@ import { defineStore } from 'pinia';
 import { Loader } from '@googlemaps/js-api-loader';
 
 export const useGoogleMapsStore = defineStore('googleMaps', () => {
-  const loader = new Loader({
-    // 替換成您的 API KEY
-    apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-    version: 'weekly',
-    libraries: ['places', 'geometry']
-  });
+  // 延遲載入：從 Worker 端點動態取得 API Key，避免在前端暴露
+  let internalLoader: Loader | null = null;
+
+  const loader = {
+    async load() {
+      if (!internalLoader) {
+        // 從 Worker 端點獲取 API key
+        const res = await fetch('/api/google-maps-key', { cache: 'no-store' });
+        if (!res.ok) {
+          throw new Error('Failed to fetch Google Maps API key');
+        }
+        const data = await res.json();
+
+        if (!data.apiKey) {
+          throw new Error('Google Maps API key is not configured');
+        }
+
+        internalLoader = new Loader({
+          apiKey: data.apiKey,
+          version: 'weekly',
+          libraries: ['places', 'geometry']
+        });
+      }
+      return internalLoader.load();
+    }
+  } as unknown as Loader;
 
   /**
    * 是否顯示未開啟取用位置權限通知

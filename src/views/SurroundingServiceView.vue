@@ -358,7 +358,9 @@ const initMap = (lat: number, lng: number) => {
       disableDefaultUI: true,
       zoomControl: false,
       // 替換成您的 MAP ID
-      mapId: ''
+      mapId: '',
+      // 顯示 POI，但禁止點擊開啟資訊
+      clickableIcons: false
     });
 
     // init marker
@@ -810,6 +812,7 @@ type DragMeta = {
   dragging: boolean;
   lockedAxis: null | 'x' | 'y';
   moved: boolean;
+  startTime: number;
 };
 const favoriteDragState = ref<Record<string, DragMeta>>({});
 const MAX_LEFT = -80; // 最大左滑
@@ -823,7 +826,8 @@ const ensureMeta = (id: string) => {
       baseX: favoriteSwipeX.value[id] || 0,
       dragging: false,
       lockedAxis: null,
-      moved: false
+      moved: false,
+      startTime: 0
     };
   }
   return favoriteDragState.value[id];
@@ -855,6 +859,7 @@ const onFavPointerDown = (e: PointerEvent, id: string) => {
   meta.dragging = true;
   meta.lockedAxis = null;
   meta.moved = false;
+  meta.startTime = Date.now();
   favoriteTransition.value[id] = false;
 };
 
@@ -878,8 +883,14 @@ const onFavPointerMove = (e: PointerEvent, id: string) => {
   }
 
   // 水平滑動
-  e.preventDefault();
-  meta.moved = true;
+  if (meta.lockedAxis === 'x') {
+    // 僅在確定為水平拖曳時阻止預設避免點擊被吃掉
+    e.preventDefault();
+  }
+  // 設定為移動需超過微小閾值，避免微動被當滑動
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+    meta.moved = true;
+  }
   let next = meta.baseX + dx;
   if (next > 0) next = 0; // 不允許向右滑
   if (next < MAX_LEFT) next = MAX_LEFT;
@@ -901,11 +912,12 @@ const onFavPointerUp = (_e: PointerEvent, id: string) => {
   meta.dragging = false;
 
   const x = favoriteSwipeX.value[id] || 0;
+  const duration = Date.now() - (meta.startTime || Date.now());
 
   // 如果鎖定了垂直軸（y），或沒有移動，直接回位
   if (meta.lockedAxis === 'y' || !meta.moved) {
-    // 視為點擊：若幾乎沒有位移，觸發套用
-    if (Math.abs(x) < 5) {
+    // 視為點擊：若幾乎沒有位移且時間短，觸發套用
+    if (Math.abs(x) < 5 && duration < 250) {
       const f = tripStore.favorites.find((fav) => fav.id === id);
       if (f) applyFavorite(f);
     }
@@ -1364,7 +1376,6 @@ const replanRoute = () => {
                       @touchmove="onFavTouchMove($event, f.id)"
                       @touchend="onFavTouchEnd($event, f.id)"
                       @touchcancel="onFavTouchEnd($event, f.id)"
-                      @click.stop="onFavoriteItemClick(f)"
                     >
                       <div>
                         <div class="text-grey-900 font-extrabold">{{ f.name }}</div>

@@ -695,19 +695,13 @@ const tryRoute = () => {
 };
 
 // 地址搜尋函數（使用 Google Geocoder）
-const searchAddress = (address: string, isDestination: boolean) => {
+const searchAddress = (address: string) => {
   if (!address || address.trim() === '') return;
 
   const geocoder = new google.maps.Geocoder();
   geocoder.geocode({ address: address }, (results, status) => {
     if (status === 'OK' && results && results[0]) {
       const location = results[0].geometry.location;
-
-      if (isDestination) {
-        selectedDest.value = true;
-      } else {
-        selectedDest.value = false;
-      }
 
       // 將地圖中心跳轉到選擇的地點
       map.setCenter({ lat: location.lat(), lng: location.lng() });
@@ -728,14 +722,14 @@ const setupAddressSearch = () => {
   if (originInputEl.value) {
     originInputEl.value.addEventListener('blur', () => {
       if (originInput.value && originInput.value.trim() !== '') {
-        searchAddress(originInput.value, false);
+        searchAddress(originInput.value);
       }
     });
     originInputEl.value.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         if (originInput.value && originInput.value.trim() !== '') {
-          searchAddress(originInput.value, false);
+          searchAddress(originInput.value);
         }
       }
     });
@@ -744,14 +738,14 @@ const setupAddressSearch = () => {
   if (destinationInputEl.value) {
     destinationInputEl.value.addEventListener('blur', () => {
       if (destinationInput.value && destinationInput.value.trim() !== '') {
-        searchAddress(destinationInput.value, true);
+        searchAddress(destinationInput.value);
       }
     });
     destinationInputEl.value.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         if (destinationInput.value && destinationInput.value.trim() !== '') {
-          searchAddress(destinationInput.value, true);
+          searchAddress(destinationInput.value);
         }
       }
     });
@@ -933,6 +927,27 @@ const onFavPointerUp = (_e: PointerEvent, id: string) => {
   }
 };
 
+// Touch handlers for mobile support
+const onFavTouchStart = (e: TouchEvent, id: string) => {
+  const t = e.touches[0];
+  if (!t) return;
+  onFavPointerDown({ clientX: t.clientX, clientY: t.clientY } as any, id);
+};
+
+const onFavTouchMove = (e: TouchEvent, id: string) => {
+  const t = e.touches[0];
+  if (!t) return;
+  // Forward preventDefault to underlying handler
+  onFavPointerMove(
+    { clientX: t.clientX, clientY: t.clientY, preventDefault: () => e.preventDefault() } as any,
+    id
+  );
+};
+
+const onFavTouchEnd = (_e: TouchEvent, id: string) => {
+  onFavPointerUp({} as any, id);
+};
+
 const onEditById = (id: string) => {
   const f = tripStore.favorites.find((x) => x.id === id);
   if (f) openEditFavorite(f);
@@ -1077,7 +1092,10 @@ const replanRoute = () => {
                       'bg-white': selectedDest,
                       'bg-primary-50': !selectedDest
                     }"
-                    @click="selectedDest = false"
+                    @click="
+                      selectedDest = false;
+                      originInputEl && originInputEl.focus();
+                    "
                   >
                     <div class="text-sm text-grey-700">起始站</div>
                     <input
@@ -1086,6 +1104,7 @@ const replanRoute = () => {
                       placeholder="點按以選擇起始站"
                       class="w-full bg-transparent outline-none"
                       @click.stop="selectedDest = false"
+                      @keydown.enter.stop.prevent
                     />
                   </div>
                   <!-- <div class="mx-2 h-0.5 w-full bg-grey-200"></div> -->
@@ -1097,7 +1116,10 @@ const replanRoute = () => {
                       'bg-primary-50': selectedDest,
                       'bg-white': !selectedDest
                     }"
-                    @click="selectedDest = true"
+                    @click="
+                      selectedDest = true;
+                      destinationInputEl && destinationInputEl.focus();
+                    "
                   >
                     <div class="text-sm text-grey-700">終點站</div>
                     <input
@@ -1106,6 +1128,7 @@ const replanRoute = () => {
                       placeholder="點按以選擇終點站"
                       class="w-full bg-transparent outline-none"
                       @click.stop="selectedDest = true"
+                      @keydown.enter.stop.prevent
                     />
                   </div>
                 </div>
@@ -1320,7 +1343,7 @@ const replanRoute = () => {
 
                     <!-- Draggable Card -->
                     <div
-                      class="bg-white rounded-lg shadow px-3 py-3 will-change-transform flex items-center justify-between"
+                      class="bg-white rounded-e-lg shadow px-3 py-3 will-change-transform flex items-center justify-between"
                       :style="{
                         transform: `translateX(${favoriteSwipeX[f.id] || 0}px)`,
                         transition: favoriteTransition[f.id] ? 'transform 180ms ease' : 'none'
@@ -1330,6 +1353,10 @@ const replanRoute = () => {
                       @pointerup="onFavPointerUp($event, f.id)"
                       @pointercancel="onFavPointerUp($event, f.id)"
                       @pointerleave="onFavPointerUp($event, f.id)"
+                      @touchstart="onFavTouchStart($event, f.id)"
+                      @touchmove.prevent="onFavTouchMove($event, f.id)"
+                      @touchend="onFavTouchEnd($event, f.id)"
+                      @touchcancel="onFavTouchEnd($event, f.id)"
                     >
                       <div>
                         <div class="text-grey-900 font-extrabold">{{ f.name }}</div>

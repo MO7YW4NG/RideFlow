@@ -17,9 +17,6 @@ const emit = defineEmits(['onPositiveClick', 'onNegativeClick']);
 
 const isOpen = defineModel({ default: false });
 
-const setIsOpen = () => {
-  isOpen.value = true;
-};
 const closeDialog = () => {
   isOpen.value = false;
 };
@@ -36,8 +33,12 @@ const onNegativeClick = () => {
 
 <template>
   <TransitionRoot appear :show="isOpen" as="template">
-    <Dialog as="div" :open="isOpen" @close="setIsOpen" class="relative z-[9999]">
-      <div class="fixed inset-0 bg-black/25" @click="closeDialog" @touchstart="closeDialog">
+    <Dialog as="div" :open="isOpen" @close="closeDialog" class="relative z-[9999]">
+      <div
+        class="fixed inset-0 bg-black/25"
+        @click.self="closeDialog"
+        @touchstart.self="closeDialog"
+      >
         <div class="min-h-full flex justify-center items-center">
           <TransitionChild
             as="template"

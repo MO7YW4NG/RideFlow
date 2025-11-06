@@ -32,7 +32,7 @@ export const useTripStore = defineStore('trip', () => {
     {
       id: crypto.randomUUID(),
       name: '上學',
-      origin: { id: '500106143', name: '螢橋國中', lat: 25.01933, lng: 25.01933 },
+      origin: { id: '500106143', name: '螢橋國中', lat: 25.01933, lng: 121.52582 },
       destination: { id: '500106007', name: '捷運臺電大樓站(1號出口)', lat: 25.0197, lng: 121.529 },
       pinToHome: true
     },

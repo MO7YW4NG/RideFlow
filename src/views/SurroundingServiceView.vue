@@ -349,7 +349,7 @@ const initMap = (lat: number, lng: number) => {
       // 限制使用者能縮放地圖的最大比例
       maxZoom: 20,
       // 限制使用者能縮放地圖的最小比例
-      minZoom: 3,
+      minZoom: 8,
       // 設定是否呈現右下角街景小人
       streetViewControl: false,
       // 設定是否讓使用者可以切換地圖樣式：一般、衛星圖等
@@ -1105,6 +1105,7 @@ const replanRoute = () => {
                       class="w-full bg-transparent outline-none"
                       @click.stop="selectedDest = false"
                       @keydown.enter.stop.prevent
+                      @keyup.enter.stop.prevent
                     />
                   </div>
                   <!-- <div class="mx-2 h-0.5 w-full bg-grey-200"></div> -->
@@ -1129,6 +1130,7 @@ const replanRoute = () => {
                       class="w-full bg-transparent outline-none"
                       @click.stop="selectedDest = true"
                       @keydown.enter.stop.prevent
+                      @keyup.enter.stop.prevent
                     />
                   </div>
                 </div>

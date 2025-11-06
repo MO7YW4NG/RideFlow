@@ -185,9 +185,9 @@ const favoriteDestinationName = computed(
  * 目前位置
  */
 const currentLocation = ref<{ lat: number; lng: number; results: any[] }>({
-  // 預設經緯度在信義區附近
-  lat: 25.0325917,
-  lng: 121.5624999,
+  // 預設經緯度在台大體育館
+  lat: 25.0219526,
+  lng: 121.5354825,
   results: []
 });
 
@@ -345,11 +345,11 @@ const initMap = (lat: number, lng: number) => {
       // 設定地圖的中心點經緯度位置
       center: { lat, lng },
       // 設定地圖縮放比例 0-20
-      zoom: 13,
+      zoom: 14,
       // 限制使用者能縮放地圖的最大比例
       maxZoom: 20,
       // 限制使用者能縮放地圖的最小比例
-      minZoom: 8,
+      minZoom: 12,
       // 設定是否呈現右下角街景小人
       streetViewControl: false,
       // 設定是否讓使用者可以切換地圖樣式：一般、衛星圖等
@@ -1359,6 +1359,7 @@ const replanRoute = () => {
                       @touchmove.prevent="onFavTouchMove($event, f.id)"
                       @touchend="onFavTouchEnd($event, f.id)"
                       @touchcancel="onFavTouchEnd($event, f.id)"
+                      @click.stop="onFavoriteItemClick(f)"
                     >
                       <div>
                         <div class="text-grey-900 font-extrabold">{{ f.name }}</div>

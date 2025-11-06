@@ -73,7 +73,7 @@
               <div class="flex flex-col">
                 <span
                   :class="[
-                    'text-lg text-black dark:text-white',
+                    'text-lg text-black',
                     index > currentState && 'opacity-50',
                   ]"
                 >
@@ -92,7 +92,7 @@
                           index === currentState &&
                           isLastStepComplete))
                     "
-                    class="mt-1 text-sm text-gray-500 dark:text-gray-400"
+                    class="mt-1 text-sm text-gray-500"
                   >
                     {{ step.afterText }}
                   </span>
@@ -103,7 +103,7 @@
         </div>
       </div>
       <div
-        class="absolute inset-x-0 bottom-0 z-[-1] h-full bg-white bg-gradient-to-t [mask-image:radial-gradient(900px_at_center,white_30%,transparent)] dark:bg-black"
+        class="absolute inset-x-0 bottom-0 z-[-1] h-full bg-white bg-gradient-to-t [mask-image:radial-gradient(900px_at_center,white_30%,transparent)]"
       ></div>
     </div>
   </Transition>

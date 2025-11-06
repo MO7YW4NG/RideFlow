@@ -904,6 +904,11 @@ const onFavPointerUp = (_e: PointerEvent, id: string) => {
 
   // 如果鎖定了垂直軸（y），或沒有移動，直接回位
   if (meta.lockedAxis === 'y' || !meta.moved) {
+    // 視為點擊：若幾乎沒有位移，觸發套用
+    if (Math.abs(x) < 5) {
+      const f = tripStore.favorites.find((fav) => fav.id === id);
+      if (f) applyFavorite(f);
+    }
     snapWithTransition(id, 0);
     return;
   }
@@ -1356,7 +1361,7 @@ const replanRoute = () => {
                       @pointercancel="onFavPointerUp($event, f.id)"
                       @pointerleave="onFavPointerUp($event, f.id)"
                       @touchstart="onFavTouchStart($event, f.id)"
-                      @touchmove.prevent="onFavTouchMove($event, f.id)"
+                      @touchmove="onFavTouchMove($event, f.id)"
                       @touchend="onFavTouchEnd($event, f.id)"
                       @touchcancel="onFavTouchEnd($event, f.id)"
                       @click.stop="onFavoriteItemClick(f)"

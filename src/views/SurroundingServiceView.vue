@@ -723,51 +723,104 @@ const searchAddress = (address: string) => {
 const setupAddressSearch = () => {
   let originEnterHandled = false;
   let destEnterHandled = false;
+  let originBlurBlocked = false;
+  let destBlurBlocked = false;
 
   if (originInputEl.value) {
     originInputEl.value.addEventListener('blur', () => {
+      // 如果 Enter 剛被按下，暫時阻止 blur 觸發搜尋（避免重複）
+      if (originBlurBlocked) {
+        originBlurBlocked = false;
+        return;
+      }
       if (originInput.value && originInput.value.trim() !== '') {
         searchAddress(originInput.value);
       }
     });
-    // 使用同一個 handler 同時綁定 keydown 與 keyup，避免重複觸發
+    // 使用 capture 模式更早攔截，並積極阻止預設行為
     const handleOriginEnter = (e: KeyboardEvent) => {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      if (originEnterHandled) return;
-      const val = (originInput.value || '').trim();
-      if (!val) return;
-      originEnterHandled = true;
-      searchAddress(val);
-      setTimeout(() => {
-        originEnterHandled = false;
-      }, 100);
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        // 阻止 blur 觸發
+        originBlurBlocked = true;
+        if (originEnterHandled) return;
+        const val = (originInput.value || '').trim();
+        if (!val) {
+          originBlurBlocked = false;
+          return;
+        }
+        originEnterHandled = true;
+        searchAddress(val);
+        setTimeout(() => {
+          originEnterHandled = false;
+          originBlurBlocked = false;
+        }, 100);
+      }
     };
-    originInputEl.value.addEventListener('keydown', handleOriginEnter);
-    originInputEl.value.addEventListener('keyup', handleOriginEnter);
+    // 使用 capture 模式在捕獲階段就攔截
+    originInputEl.value.addEventListener('keydown', handleOriginEnter, { capture: true });
+    originInputEl.value.addEventListener('keyup', handleOriginEnter, { capture: true });
+    // 阻止 Enter 導致的 focus 改變
+    originInputEl.value.addEventListener(
+      'keypress',
+      (e: KeyboardEvent) => {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      { capture: true }
+    );
   }
 
   if (destinationInputEl.value) {
     destinationInputEl.value.addEventListener('blur', () => {
+      if (destBlurBlocked) {
+        destBlurBlocked = false;
+        return;
+      }
       if (destinationInput.value && destinationInput.value.trim() !== '') {
         searchAddress(destinationInput.value);
       }
     });
-    // 使用同一個 handler 同時綁定 keydown 與 keyup，避免重複觸發
+    // 使用 capture 模式更早攔截，並積極阻止預設行為
     const handleDestEnter = (e: KeyboardEvent) => {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      if (destEnterHandled) return;
-      const val = (destinationInput.value || '').trim();
-      if (!val) return;
-      destEnterHandled = true;
-      searchAddress(val);
-      setTimeout(() => {
-        destEnterHandled = false;
-      }, 100);
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        // 阻止 blur 觸發
+        destBlurBlocked = true;
+        if (destEnterHandled) return;
+        const val = (destinationInput.value || '').trim();
+        if (!val) {
+          destBlurBlocked = false;
+          return;
+        }
+        destEnterHandled = true;
+        searchAddress(val);
+        setTimeout(() => {
+          destEnterHandled = false;
+          destBlurBlocked = false;
+        }, 100);
+      }
     };
-    destinationInputEl.value.addEventListener('keydown', handleDestEnter);
-    destinationInputEl.value.addEventListener('keyup', handleDestEnter);
+    // 使用 capture 模式在捕獲階段就攔截
+    destinationInputEl.value.addEventListener('keydown', handleDestEnter, { capture: true });
+    destinationInputEl.value.addEventListener('keyup', handleDestEnter, { capture: true });
+    // 阻止 Enter 導致的 focus 改變
+    destinationInputEl.value.addEventListener(
+      'keypress',
+      (e: KeyboardEvent) => {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      { capture: true }
+    );
   }
 };
 

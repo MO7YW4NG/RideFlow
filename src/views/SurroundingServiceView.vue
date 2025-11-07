@@ -721,20 +721,30 @@ const searchAddress = (address: string) => {
 
 // 設置地址搜尋事件監聽
 const setupAddressSearch = () => {
+  let originEnterHandled = false;
+  let destEnterHandled = false;
+
   if (originInputEl.value) {
     originInputEl.value.addEventListener('blur', () => {
       if (originInput.value && originInput.value.trim() !== '') {
         searchAddress(originInput.value);
       }
     });
-    originInputEl.value.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (originInput.value && originInput.value.trim() !== '') {
-          searchAddress(originInput.value);
-        }
-      }
-    });
+    // 使用同一個 handler 同時綁定 keydown 與 keyup，避免重複觸發
+    const handleOriginEnter = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (originEnterHandled) return;
+      const val = (originInput.value || '').trim();
+      if (!val) return;
+      originEnterHandled = true;
+      searchAddress(val);
+      setTimeout(() => {
+        originEnterHandled = false;
+      }, 100);
+    };
+    originInputEl.value.addEventListener('keydown', handleOriginEnter);
+    originInputEl.value.addEventListener('keyup', handleOriginEnter);
   }
 
   if (destinationInputEl.value) {
@@ -743,14 +753,21 @@ const setupAddressSearch = () => {
         searchAddress(destinationInput.value);
       }
     });
-    destinationInputEl.value.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (destinationInput.value && destinationInput.value.trim() !== '') {
-          searchAddress(destinationInput.value);
-        }
-      }
-    });
+    // 使用同一個 handler 同時綁定 keydown 與 keyup，避免重複觸發
+    const handleDestEnter = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (destEnterHandled) return;
+      const val = (destinationInput.value || '').trim();
+      if (!val) return;
+      destEnterHandled = true;
+      searchAddress(val);
+      setTimeout(() => {
+        destEnterHandled = false;
+      }, 100);
+    };
+    destinationInputEl.value.addEventListener('keydown', handleDestEnter);
+    destinationInputEl.value.addEventListener('keyup', handleDestEnter);
   }
 };
 

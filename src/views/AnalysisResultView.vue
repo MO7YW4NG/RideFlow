@@ -605,7 +605,7 @@ onMounted(() => {
            <img :src="resultHeat" alt="heat" class="w-6 h-6">
             <div class="flex flex-col items-start">
               <span class="text-xs text-grey-600">消耗熱量</span>
-              <div class="flex item-center text-xl font-extrabold gap-1">
+              <div class="flex items-center text-xl font-extrabold gap-1">
                 <span class="text-primary-500">{{ routeDetails.caloriesBurned }}</span>
                 <span class="text-grey-900"> 大卡</span>
                 <button 

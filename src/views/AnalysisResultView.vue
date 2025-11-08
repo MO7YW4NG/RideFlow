@@ -172,8 +172,8 @@ const startRide = () => {
   const destinationEncoded = encodeURIComponent(destination);
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originEncoded}&destination=${destinationEncoded}&travelmode=bicycling`;
   
-  // 在新標籤頁中打開 Google Maps
-  window.open(googleMapsUrl, '_blank');
+  // 在當前頁面中跳轉到 Google Maps
+  window.location.href = googleMapsUrl;
 };
 
 // 根據適合度返回文字顏色

@@ -7,7 +7,9 @@ import CarbonReductionInfoDialog from '@/components/ui/CarbonReductionInfoDialog
 import CalorieInfoDialog from '@/components/ui/CalorieInfoDialog.vue';
 import iconResultBike from '@/assets/images/icon-result-bike.svg';
 import iconResultDest from '@/assets/images/icon-result-dest.svg';
-import mascot from '@/assets/images/mascot-ideal.webp';
+import mascotIdeal from '@/assets/images/mascot-ideal.webp';
+import mascotNormal from '@/assets/images/mascot-normal.webp';
+import mascotAlert from '@/assets/images/mascot-alert.webp';
 import resultRain from '@/assets/images/icon-result-rain.svg';
 import resultSun from '@/assets/images/icon-result-sun.svg';
 import resultAir from '@/assets/images/icon-result-air.svg';
@@ -16,6 +18,10 @@ import resultTime from '@/assets/images/icon-result-time.svg';
 import resultCarbon from '@/assets/images/icon-result-carbon.svg';
 import resultConstruction from '@/assets/images/icon-result-construction.svg';
 import resultHeat from '@/assets/images/icon-result-heat.svg';
+import weatherSun from '@/assets/images/icon-weather-sun.svg';
+import weatherCloud from '@/assets/images/icon-weather-cloud.svg';
+import weatherRain from '@/assets/images/icon-weather-rain.svg';
+import weatherSunCloud from '@/assets/images/icon-weather-suncloud.svg';
 
 const route = useRoute();
 const router = useRouter();
@@ -37,7 +43,8 @@ const weatherData = ref({
   precipitation: 10,
   aqi: 45,
   uvi: 3,
-  isSunny: true
+  isSunny: true,
+  conditionLabel: ''
 });
 
 // 推薦標籤
@@ -47,11 +54,21 @@ interface RecommendationTag {
 }
 const recommendationTags = ref<RecommendationTag[]>([]);
 
+// 適合度
+const suitability = ref<string>('');
+
 // 起始站資料
 const originStation = ref({
   name: '',
   availableBikes: 0
 });
+
+// 起始站附近的站點資料
+const nearbyStations = ref<Array<{
+  station_name: string;
+  station_no: string;
+  distance: number;
+}>>([]);
 
 // 終點站資料
 const destinationStation = ref({
@@ -59,20 +76,27 @@ const destinationStation = ref({
   availableSpaces: 0
 });
 
+// 終點站附近的站點資料
+const destinationNearbyStations = ref<Array<{
+  station_name: string;
+  station_no: string;
+  distance: number;
+}>>([]);
+
 // 路線詳情
 const routeDetails = ref({
-  estimatedTime: 18, // 分鐘
-  carbonReduction: 0.19, // 公斤
-  caloriesBurned: 95, // 大卡
-  roadConstruction: 2 // 件
+  estimatedTime: 0, // 分鐘
+  carbonReduction: 0, // 公斤
+  caloriesBurned: 0, // 大卡
+  roadConstruction: 0 // 件
 });
 
 // 空位預測資料
 const vacancyPrediction = ref([
-  { label: '目前', value: 8 },
-  { label: '15分鐘後', value: 6 },
-  { label: '30分鐘後', value: 2 },
-  { label: '45分鐘後', value: 5 }
+  { label: '目前', value: 0 },
+  { label: '15分鐘後', value: 0 },
+  { label: '30分鐘後', value: 0 },
+  { label: '45分鐘後', value: 0 }
 ]);
 
 // 計算柱狀圖的最大高度（用於視覺化）
@@ -110,6 +134,9 @@ const weatherAlert = ref<{
 // 天氣特報彈窗顯示狀態
 const showWeatherAlert = ref(false);
 
+// 存儲 routes 數據
+const routesData = ref<any[] | null>(null);
+
 
 // 返回上一頁（直接跳轉到 SurroundingServiceView，避免回到 loading 頁面）
 const goBack = () => {
@@ -121,25 +148,63 @@ const replanRoute = () => {
   router.push({ name: 'home' });
 };
 
+// 跳轉到道路施工資訊頁面
+const goToRoadConstruction = () => {
+  const constructionMapUrl = 'https://dig.taipei/Tpdig/Map/ShowPublic.aspx';
+  window.location.href = constructionMapUrl;
+};
+
 // 開始騎乘
 const startRide = () => {
   // TODO: 實現開始騎乘邏輯
 };
 
+// 根據適合度返回文字顏色
+const suitabilityTextColor = computed(() => {
+  if (suitability.value === '非常適合') {
+    return 'text-[#76A732]';
+  } else if (suitability.value === '適合') {
+    return 'text-primary-500';
+  } else {
+    return 'text-orange-500';
+  }
+});
+
+// 根據適合度返回 mascot 圖片
+const mascotImage = computed(() => {
+  if (suitability.value === '非常適合') {
+    return mascotIdeal;
+  } else if (suitability.value === '適合') {
+    return mascotNormal;
+  } else {
+    return mascotAlert;
+  }
+});
+
+// 根據天氣條件返回天氣圖標
+const weatherIcon = computed(() => {
+  const condition = weatherData.value.conditionLabel;
+  if (condition && condition.includes('雨')) {
+    return weatherRain;
+  } else if (condition && condition.includes('多雲')) {
+    return weatherSunCloud;
+  } else if (condition && condition.includes('陰')) {
+    return weatherCloud;
+  } else if (condition && condition.includes('晴')) {
+    return weatherSun;
+  }
+  // 默認返回晴天圖標
+  return weatherCloud;
+});
+
 // 起始站選單資料（不包含當前選中的站點）
 const originStationOptions = computed(() => {
-  const options = [
-    { name: '捷運公館站(3號出口)', availableBikes: 12, no: '500101181' },
-    { name: '台大醫院站(2號出口)', availableBikes: 8, no: '' },
-    { name: '中正紀念堂站(5號出口)', availableBikes: 15, no: '' }
-  ];
-  
-  // 更新選項中的編號（如果有的話）
-  options.forEach(opt => {
-    if (opt.name === originStation.value.name && originNo.value) {
-      opt.no = originNo.value;
-    }
-  });
+  // 從 nearby_stations 轉換為選項格式
+  const options = nearbyStations.value.map(station => ({
+    name: station.station_name,
+    no: station.station_no,
+    distance: station.distance
+  }));
   
   // 過濾掉當前選中的站點
   return options.filter(opt => opt.name !== originStation.value.name);
@@ -147,18 +212,12 @@ const originStationOptions = computed(() => {
 
 // 終點站選單資料（不包含當前選中的站點）
 const destinationStationOptions = computed(() => {
-  const options = [
-    { name: '捷運公館站(1號出口)', availableSpaces: 8, no: '500106003' },
-    { name: '捷運公館站(3號出口)', availableSpaces: 5, no: '500101181' },
-    { name: '捷運公館站(4號出口)', availableSpaces: 12, no: '500106004' }
-  ];
-  
-  // 更新選項中的編號（如果有的話）
-  options.forEach(opt => {
-    if (opt.name === destinationStation.value.name && destNo.value) {
-      opt.no = destNo.value;
-    }
-  });
+  // 從 nearby_stations 轉換為選項格式
+  const options = destinationNearbyStations.value.map(station => ({
+    name: station.station_name,
+    no: station.station_no,
+    distance: station.distance
+  }));
   
   // 過濾掉當前選中的站點
   return options.filter(opt => opt.name !== destinationStation.value.name);
@@ -267,6 +326,11 @@ const loadAnalysisData = () => {
       data = JSON.parse(storedData);
     }
     
+    // 打印所有後端資料
+    console.log('=== 後端給的所有資料 ===');
+    console.log('完整資料:', data);
+    console.log('完整資料 (JSON):', JSON.stringify(data, null, 2));
+    
     // 更新天氣與環境資料
     if (data && data.weather_block) {
       weatherData.value = {
@@ -274,7 +338,8 @@ const loadAnalysisData = () => {
         precipitation: parseFloat(data.weather_block.rain_probability) || 10,
         aqi: parseFloat(data.weather_block.aqi) || 45,
         uvi: data.weather_block.uvi === '-' ? 3 : parseFloat(data.weather_block.uvi) || 3,
-        isSunny: data.weather_block.condition_label === '晴'
+        isSunny: data.weather_block.condition_label === '晴',
+        conditionLabel: data.weather_block.condition_label || ''
       };
     }
     
@@ -284,6 +349,10 @@ const loadAnalysisData = () => {
       // available_bikes 寫入「目前可租借數量」
       const bikes = Number(data.origin_station_block.available_bikes);
       originStation.value.availableBikes = isNaN(bikes) ? 0 : bikes;
+      // 讀取附近的站點資料
+      if (data.origin_station_block.nearby_stations && Array.isArray(data.origin_station_block.nearby_stations)) {
+        nearbyStations.value = data.origin_station_block.nearby_stations;
+      }
     }
     
     // 更新終點站資料
@@ -292,14 +361,48 @@ const loadAnalysisData = () => {
       // available_slots 寫入「目前空位數量」
       const slots = Number(data.destination_station_block.available_slots);
       destinationStation.value.availableSpaces = isNaN(slots) ? 0 : slots;
+      // 讀取附近的站點資料
+      if (data.destination_station_block.nearby_stations && Array.isArray(data.destination_station_block.nearby_stations)) {
+        destinationNearbyStations.value = data.destination_station_block.nearby_stations;
+      }
+      // 更新空位預測資料 - "目前"使用 available_slots
+      vacancyPrediction.value[0].value = isNaN(slots) ? 0 : slots;
     }
     
     // 更新推薦標籤
-    if (data && data.label_block && data.label_block.labels) {
-      recommendationTags.value = data.label_block.labels.map((label: any) => ({
-        content: label.content,
-        level: label.level
-      }));
+    if (data && data.label_block) {
+      if (data.label_block.labels) {
+        recommendationTags.value = data.label_block.labels.map((label: any) => ({
+          content: label.content,
+          level: label.level
+        }));
+      }
+      // 讀取適合度
+      if (data.label_block.suitability) {
+        suitability.value = data.label_block.suitability;
+      }
+    }
+    
+    // 更新空位預測資料 - "15分鐘後"、"30分鐘後"、"45分鐘後" 使用 predictions 陣列中的三個值
+    if (data && data.predictions && Array.isArray(data.predictions)) {
+      const predictions = data.predictions;
+      if (predictions.length >= 1) {
+        vacancyPrediction.value[1].value = Number(predictions[0]) || 0;
+      }
+      if (predictions.length >= 2) {
+        vacancyPrediction.value[2].value = Number(predictions[1]) || 0;
+      }
+      if (predictions.length >= 3) {
+        vacancyPrediction.value[3].value = Number(predictions[2]) || 0;
+      }
+    }
+    
+    // 更新路線詳情資料
+    if (data && data.route_analysis_block) {
+      routeDetails.value.estimatedTime = Number(data.route_analysis_block.riding_time) || 0;
+      routeDetails.value.carbonReduction = Number(data.route_analysis_block.carbon_reduction) || 0;
+      routeDetails.value.caloriesBurned = Number(data.route_analysis_block.calories) || 0;
+      routeDetails.value.roadConstruction = Number(data.route_analysis_block.construction_count) || 0;
     }
     
     // 檢查是否有天氣特報
@@ -345,17 +448,18 @@ onMounted(() => {
     try {
       // 如果 query 參數中有 routes，解碼並保存到 sessionStorage 作為備份
       const decodedRoutes = decodeURIComponent(routesParam.value);
-      const routesData = JSON.parse(decodedRoutes);
+      const parsedRoutes = JSON.parse(decodedRoutes);
+      routesData.value = parsedRoutes;
       console.log('=== AnalysisResultView 獲取到的 routes 數據 ===');
       console.log('routesParam.value (原始):', routesParam.value.substring(0, 100) + '...');
       console.log('decodedRoutes (解碼後):', decodedRoutes.substring(0, 200) + '...');
-      console.log('routesData (解析後):', routesData);
-      console.log('routesData 類型:', Array.isArray(routesData) ? 'Array' : typeof routesData);
-      console.log('routesData.length:', Array.isArray(routesData) ? routesData.length : 'N/A');
-      if (Array.isArray(routesData) && routesData.length > 0) {
-        console.log('routesData[0]:', routesData[0]);
-        console.log('routesData[0].legs:', routesData[0].legs);
-        console.log('routesData[0].legs.length:', routesData[0].legs?.length);
+      console.log('routesData (解析後):', routesData.value);
+      console.log('routesData 類型:', Array.isArray(routesData.value) ? 'Array' : typeof routesData.value);
+      console.log('routesData.length:', Array.isArray(routesData.value) ? routesData.value.length : 'N/A');
+      if (Array.isArray(routesData.value) && routesData.value.length > 0) {
+        console.log('routesData[0]:', routesData.value[0]);
+        console.log('routesData[0].legs:', routesData.value[0].legs);
+        console.log('routesData[0].legs.length:', routesData.value[0].legs?.length);
       }
       sessionStorage.setItem('routeData', decodedRoutes);
     } catch (error) {
@@ -366,13 +470,14 @@ onMounted(() => {
     const sessionRoutes = sessionStorage.getItem('routeData');
     if (sessionRoutes) {
       try {
-        const routesData = JSON.parse(sessionRoutes);
+        const parsedRoutes = JSON.parse(sessionRoutes);
+        routesData.value = parsedRoutes;
         console.log('=== AnalysisResultView 從 sessionStorage 獲取到的 routes 數據 ===');
-        console.log('routesData:', routesData);
-        console.log('routesData 類型:', Array.isArray(routesData) ? 'Array' : typeof routesData);
-        console.log('routesData.length:', Array.isArray(routesData) ? routesData.length : 'N/A');
-        if (Array.isArray(routesData) && routesData.length > 0) {
-          console.log('routesData[0]:', routesData[0]);
+        console.log('routesData:', routesData.value);
+        console.log('routesData 類型:', Array.isArray(routesData.value) ? 'Array' : typeof routesData.value);
+        console.log('routesData.length:', Array.isArray(routesData.value) ? routesData.value.length : 'N/A');
+        if (Array.isArray(routesData.value) && routesData.value.length > 0) {
+          console.log('routesData[0]:', routesData.value[0]);
         }
       } catch (error) {
         console.error('從 sessionStorage 解析 routes 失敗:', error);
@@ -395,22 +500,7 @@ onMounted(() => {
         <div class="flex items-center gap-3 flex-1">
           <!-- 天氣圖標 -->
           <div class="w-12 h-12 flex items-center justify-center">
-            <svg
-              v-if="weatherData.isSunny"
-              width="48"
-              height="48"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle cx="12" cy="12" r="5" fill="#F5BA4B" />
-              <path
-                d="M12 2V4M12 20V22M22 12H20M4 12H2M19.07 4.93L17.66 6.34M6.34 17.66L4.93 19.07M19.07 19.07L17.66 17.66M6.34 6.34L4.93 4.93"
-                stroke="#F5BA4B"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
+            <img :src="weatherIcon" alt="天氣" class="w-12 h-12" />
           </div>
           <div class="flex flex-col gap-1 flex-1">
             <div class="text-2xl font-bold text-grey-900">{{ weatherData.temperature }} °C</div>
@@ -460,7 +550,7 @@ onMounted(() => {
     <div class="flex item-center justify-center py-5 mx-4 mt-4">
       <div class="flex-1">
         <div class="flex py-2 items-center">
-            <div class="text-2xl font-extrabold text-[#76A732] mb-2">非常適合</div>
+            <div class="text-2xl font-extrabold mb-2" :class="suitabilityTextColor">{{ suitability}}</div>
             <div class="text-2xl font-extrabold text-[gray-900] mb-2">騎乘</div>
         </div>
         <div class="flex flex-col gap-2 items-start">
@@ -481,7 +571,7 @@ onMounted(() => {
         </div>
       </div>
     <!-- image -->
-      <img :src="mascot" alt="mascot" class="flex-1 w-1/2 max-w-[200px]">
+      <img :src="mascotImage" alt="mascot" class="flex-1 w-1/2 max-w-[200px]">
     </div>
 
     <!-- 路線信息區域 -->
@@ -541,7 +631,7 @@ onMounted(() => {
                   :key="index"
                   :value="station.name"
                 >
-                  {{ station.name }}
+                  {{ station.name }}  {{ station.distance }}m
                 </option>
               </select>
             </div>
@@ -562,7 +652,7 @@ onMounted(() => {
       </div>
 
       <!-- 路線詳情卡片 -->
-      <div class="relative ml-15 mb-4 bg-primary-100 rounded-xl p-4">
+      <div class="relative ml-15 mb-4 bg-primary-100 rounded-xl p-3">
         <div class="grid grid-cols-2 gap-4">
           <!-- 預估時間 -->
           <div class="flex items-center gap-2">
@@ -584,8 +674,8 @@ onMounted(() => {
                 <span class="text-xs text-grey-600">減碳量</span>
               </div>
               <div class="flex items-center gap-1 text-xl font-extrabold">
-                <span class="text-primary-500">{{ routeDetails.carbonReduction }}</span>
-                <span class="text-grey-900 whitespace-nowrap">公斤</span>
+                <span class="text-primary-500">{{ routeDetails.carbonReduction * 1000 }}</span>
+                <span class="text-grey-900 whitespace-nowrap">公克</span>
                 <button 
                   @click="openCarbonReductionDialog"
                   class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300 hover:text-grey-500 transition-colors cursor-pointer"
@@ -605,7 +695,7 @@ onMounted(() => {
            <img :src="resultHeat" alt="heat" class="w-6 h-6">
             <div class="flex flex-col items-start">
               <span class="text-xs text-grey-600">消耗熱量</span>
-              <div class="flex items-center text-xl font-extrabold gap-1">
+              <div class="flex items-center text-xl font-extrabold gap-1 whitespace-nowrap">
                 <span class="text-primary-500">{{ routeDetails.caloriesBurned }}</span>
                 <span class="text-grey-900"> 大卡</span>
                 <button 
@@ -632,36 +722,40 @@ onMounted(() => {
               <div class="flex items-center gap-1 text-xl font-extrabold">
                 <span class="text-primary-500">{{ routeDetails.roadConstruction }}</span>
                 <span class="text-grey-900 whitespace-nowrap"> 件</span>
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="text-grey-300"
+                <button
+                  @click="goToRoadConstruction"
+                  class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300 hover:text-grey-500 transition-colors cursor-pointer"
                 >
-                  <path
-                    d="M18 13V19A2 2 0 0 1 16 21H5A2 2 0 0 1 3 19V8A2 2 0 0 1 5 6H10"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M15 3H21V9"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M10 14L21 3"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M18 13V19A2 2 0 0 1 16 21H5A2 2 0 0 1 3 19V8A2 2 0 0 1 5 6H10"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M15 3H21V9"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M10 14L21 3"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -717,7 +811,7 @@ onMounted(() => {
                   :key="index"
                   :value="station.name"
                 >
-                  {{ station.name }}
+                  {{ station.name }}  {{ station.distance }}m
                 </option>
               </select>
             </div>

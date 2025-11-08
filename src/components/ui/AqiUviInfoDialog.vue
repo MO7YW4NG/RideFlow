@@ -29,7 +29,7 @@ const closeDialog = () => {
             <DialogPanel
               class="w-4/5 max-w-screen-md flex flex-col transform overflow-y-auto transition-all bg-white pt-4 rounded-xl"
             >
-              <div class="px-4 my-5">
+              <div class="px-2 my-5">
                 <div class="aqi-uvi-dialog-content">
                   <!-- AQI 空氣品質指標 -->
                   <div class="mb-6">

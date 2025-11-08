@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AqiUviInfoDialog from '@/components/ui/AqiUviInfoDialog.vue';
 import WeatherAlertDialog from '@/components/ui/WeatherAlertDialog.vue';
+import CarbonReductionInfoDialog from '@/components/ui/CarbonReductionInfoDialog.vue';
+import CalorieInfoDialog from '@/components/ui/CalorieInfoDialog.vue';
 import iconResultBike from '@/assets/images/icon-result-bike.svg';
 import iconResultDest from '@/assets/images/icon-result-dest.svg';
 import mascot from '@/assets/images/mascot-ideal.webp';
@@ -81,6 +83,20 @@ const showInfoDialog = ref(false);
 
 const openInfoDialog = () => {
   showInfoDialog.value = true;
+};
+
+// 減碳量說明區塊
+const showCarbonReductionDialog = ref(false);
+
+const openCarbonReductionDialog = () => {
+  showCarbonReductionDialog.value = true;
+};
+
+// 消耗熱量說明區塊
+const showCalorieDialog = ref(false);
+
+const openCalorieDialog = () => {
+  showCalorieDialog.value = true;
 };
 
 // 天氣特報資料
@@ -431,6 +447,12 @@ onMounted(() => {
     <!-- AQI/UVI 說明pop-up -->
     <AqiUviInfoDialog v-model="showInfoDialog" />
 
+    <!-- 減碳量說明pop-up -->
+    <CarbonReductionInfoDialog v-model="showCarbonReductionDialog" />
+
+    <!-- 消耗熱量說明pop-up -->
+    <CalorieInfoDialog v-model="showCalorieDialog" />
+
     <!-- 天氣特報pop-up -->
     <WeatherAlertDialog v-model="showWeatherAlert" :alert="weatherAlert" />
 
@@ -564,7 +586,10 @@ onMounted(() => {
               <div class="flex items-center gap-1 text-xl font-extrabold">
                 <span class="text-primary-500">{{ routeDetails.carbonReduction }}</span>
                 <span class="text-grey-900 whitespace-nowrap">公斤</span>
-                <button class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300">
+                <button 
+                  @click="openCarbonReductionDialog"
+                  class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300 hover:text-grey-500 transition-colors cursor-pointer"
+                >
                   <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/>
                     <path d="M10.8333 5.83333C10.8333 6.29357 10.4602 6.66667 9.99999 6.66667C9.53975 6.66667 9.16666 6.29357 9.16666 5.83333C9.16666 5.3731 9.53975 5 9.99999 5C10.4602 5 10.8333 5.3731 10.8333 5.83333Z" fill="currentColor"/>
@@ -583,7 +608,10 @@ onMounted(() => {
               <div class="flex item-center text-xl font-extrabold gap-1">
                 <span class="text-primary-500">{{ routeDetails.caloriesBurned }}</span>
                 <span class="text-grey-900"> 大卡</span>
-                <button class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300">
+                <button 
+                  @click="openCalorieDialog"
+                  class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300 hover:text-grey-500 transition-colors cursor-pointer"
+                >
                   <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/>
                     <path d="M10.8333 5.83333C10.8333 6.29357 10.4602 6.66667 9.99999 6.66667C9.53975 6.66667 9.16666 6.29357 9.16666 5.83333C9.16666 5.3731 9.53975 5 9.99999 5C10.4602 5 10.8333 5.3731 10.8333 5.83333Z" fill="currentColor"/>

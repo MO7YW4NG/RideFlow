@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AqiUviInfoDialog from '@/components/ui/AqiUviInfoDialog.vue';
+import WeatherAlertDialog from '@/components/ui/WeatherAlertDialog.vue';
 import iconResultBike from '@/assets/images/icon-result-bike.svg';
 import iconResultDest from '@/assets/images/icon-result-dest.svg';
 import mascot from '@/assets/images/mascot-ideal.png';
@@ -22,8 +23,10 @@ const originName = computed(() => (route.query.origin as string) || '');
 const destinationName = computed(() => (route.query.destination as string) || '');
 const originLat = computed(() => parseFloat((route.query.originLat as string) || '0'));
 const originLng = computed(() => parseFloat((route.query.originLng as string) || '0'));
+const originNo = computed(() => (route.query.originNo as string) || '');
 const destLat = computed(() => parseFloat((route.query.destLat as string) || '0'));
 const destLng = computed(() => parseFloat((route.query.destLng as string) || '0'));
+const destNo = computed(() => (route.query.destNo as string) || '');
 
 // 天氣與環境資料
 const weatherData = ref({
@@ -35,24 +38,28 @@ const weatherData = ref({
 });
 
 // 推薦標籤
-const recommendationTags = ref(['天氣晴朗', '空氣品質良好', '空氣品質良好']);
+interface RecommendationTag {
+  content: string;
+  level: string;
+}
+const recommendationTags = ref<RecommendationTag[]>([]);
 
 // 起始站資料
 const originStation = ref({
-  name: '捷運公館站(3號出口)',
-  availableBikes: 12
+  name: '',
+  availableBikes: 0
 });
 
 // 終點站資料
 const destinationStation = ref({
-  name: '臺大綜合體育館體育場前',
-  availableSpaces: 8
+  name: '',
+  availableSpaces: 0
 });
 
 // 路線詳情
 const routeDetails = ref({
   estimatedTime: 18, // 分鐘
-  carbonReduction: 18, // 公斤
+  carbonReduction: 0.19, // 公斤
   caloriesBurned: 95, // 大卡
   roadConstruction: 2 // 件
 });
@@ -75,6 +82,17 @@ const openInfoDialog = () => {
   showInfoDialog.value = true;
 };
 
+// 天氣特報資料
+const weatherAlert = ref<{
+  title: string;
+  location: string;
+  startTime: string;
+  endTime: string;
+} | null>(null);
+
+// 天氣特報彈窗顯示狀態
+const showWeatherAlert = ref(false);
+
 
 // 返回上一頁
 const goBack = () => {
@@ -92,24 +110,42 @@ const startRide = () => {
   console.log('開始騎乘');
 };
 
-// 起始站選單資料（包含當前選中的站點）
+// 起始站選單資料（不包含當前選中的站點）
 const originStationOptions = computed(() => {
   const options = [
-    { name: '捷運公館站(3號出口)', availableBikes: 12 },
-    { name: '台大醫院站(2號出口)', availableBikes: 8 },
-    { name: '中正紀念堂站(5號出口)', availableBikes: 15 }
+    { name: '捷運公館站(3號出口)', availableBikes: 12, no: '500101181' },
+    { name: '台大醫院站(2號出口)', availableBikes: 8, no: '' },
+    { name: '中正紀念堂站(5號出口)', availableBikes: 15, no: '' }
   ];
-  return options;
+  
+  // 更新選項中的編號（如果有的話）
+  options.forEach(opt => {
+    if (opt.name === originStation.value.name && originNo.value) {
+      opt.no = originNo.value;
+    }
+  });
+  
+  // 過濾掉當前選中的站點
+  return options.filter(opt => opt.name !== originStation.value.name);
 });
 
-// 終點站選單資料（包含當前選中的站點）
+// 終點站選單資料（不包含當前選中的站點）
 const destinationStationOptions = computed(() => {
   const options = [
-    { name: '臺大綜合體育館體育場前', availableSpaces: 8 },
-    { name: '台大圖書館前', availableSpaces: 5 },
-    { name: '台大總圖書館', availableSpaces: 12 }
+    { name: '捷運公館站(1號出口)', availableSpaces: 8, no: '500106003' },
+    { name: '捷運公館站(3號出口)', availableSpaces: 5, no: '500101181' },
+    { name: '捷運公館站(4號出口)', availableSpaces: 12, no: '500106004' }
   ];
-  return options;
+  
+  // 更新選項中的編號（如果有的話）
+  options.forEach(opt => {
+    if (opt.name === destinationStation.value.name && destNo.value) {
+      opt.no = destNo.value;
+    }
+  });
+  
+  // 過濾掉當前選中的站點
+  return options.filter(opt => opt.name !== destinationStation.value.name);
 });
 
 // Select 元素引用
@@ -132,7 +168,24 @@ const selectOriginStation = (event: Event) => {
   const selectedName = target.value;
   const station = originStationOptions.value.find(s => s.name === selectedName);
   if (station) {
-    originStation.value = station;
+    // 跳轉到 SurroundingServiceView，傳遞選中的起始站和當前的終點站
+    const query: Record<string, string> = {
+      origin: selectedName
+    };
+    if (station.no) {
+      query.originNo = station.no;
+    }
+    // 同時傳遞當前的終點站信息
+    if (destinationStation.value.name) {
+      query.destination = destinationStation.value.name;
+    }
+    if (destNo.value) {
+      query.destNo = destNo.value;
+    }
+    router.push({
+      name: 'home',
+      query
+    });
   }
 };
 
@@ -142,18 +195,153 @@ const selectDestinationStation = (event: Event) => {
   const selectedName = target.value;
   const station = destinationStationOptions.value.find(s => s.name === selectedName);
   if (station) {
-    destinationStation.value = station;
+    // 跳轉到 SurroundingServiceView，傳遞當前的起始站和選中的終點站
+    const query: Record<string, string> = {
+      destination: selectedName
+    };
+    if (station.no) {
+      query.destNo = station.no;
+    }
+    // 同時傳遞當前的起始站信息
+    if (originStation.value.name) {
+      query.origin = originStation.value.name;
+    }
+    if (originNo.value) {
+      query.originNo = originNo.value;
+    }
+    router.push({
+      name: 'home',
+      query
+    });
+  }
+};
+
+// 從 sessionStorage 讀取分析結果數據
+const loadAnalysisData = () => {
+  try {
+    console.log('=== 開始讀取分析結果數據 ===');
+    
+    // 從 sessionStorage 讀取數據
+    const storedData = sessionStorage.getItem('analysisResultData');
+    if (!storedData) {
+      console.warn('沒有找到存儲的分析結果數據');
+      return;
+    }
+    
+    const data = JSON.parse(storedData);
+    console.log('讀取的數據:', data);
+    console.log('數據類型:', typeof data);
+    console.log('數據 keys:', Object.keys(data || {}));
+    
+    // 更新天氣與環境資料
+    if (data && data.weather_block) {
+      console.log('更新天氣資料:', data.weather_block);
+      console.log('temperature:', data.weather_block.temperature, '類型:', typeof data.weather_block.temperature);
+      weatherData.value = {
+        temperature: parseFloat(data.weather_block.temperature) || 24,
+        precipitation: parseFloat(data.weather_block.rain_probability) || 10,
+        aqi: parseFloat(data.weather_block.aqi) || 45,
+        uvi: data.weather_block.uvi === '-' ? 3 : parseFloat(data.weather_block.uvi) || 3,
+        isSunny: data.weather_block.condition_label === '晴'
+      };
+      console.log('更新後的 weatherData:', weatherData.value);
+    } else {
+      console.log('沒有 weather_block 數據, data:', data);
+    }
+    
+    // 更新起始站資料
+    if (data && data.origin_station_block) {
+      console.log('更新起始站資料:', data.origin_station_block);
+      console.log('available_bikes:', data.origin_station_block.available_bikes, '類型:', typeof data.origin_station_block.available_bikes);
+      originStation.value.name = data.origin_station_block.station_name || originStation.value.name;
+      // available_bikes 寫入「目前可租借數量」
+      const bikes = Number(data.origin_station_block.available_bikes);
+      originStation.value.availableBikes = isNaN(bikes) ? 0 : bikes;
+      console.log('更新後的 originStation:', originStation.value);
+    } else {
+      console.log('沒有 origin_station_block 數據, data:', data);
+    }
+    
+    // 更新終點站資料
+    if (data && data.destination_station_block) {
+      console.log('更新終點站資料:', data.destination_station_block);
+      console.log('available_slots:', data.destination_station_block.available_slots, '類型:', typeof data.destination_station_block.available_slots);
+      destinationStation.value.name = data.destination_station_block.station_name || destinationStation.value.name;
+      // available_slots 寫入「目前空位數量」
+      const slots = Number(data.destination_station_block.available_slots);
+      destinationStation.value.availableSpaces = isNaN(slots) ? 0 : slots;
+      console.log('更新後的 destinationStation:', destinationStation.value);
+    } else {
+      console.log('沒有 destination_station_block 數據, data:', data);
+    }
+    
+    // 更新推薦標籤
+    if (data && data.label_block && data.label_block.labels) {
+      console.log('更新推薦標籤:', data.label_block.labels);
+      recommendationTags.value = data.label_block.labels.map((label: any) => ({
+        content: label.content,
+        level: label.level
+      }));
+      console.log('更新後的 recommendationTags:', recommendationTags.value);
+    } else {
+      console.log('沒有 label_block 數據, data:', data);
+    }
+    
+    // 檢查是否有天氣特報
+    if (data.weather_block && 
+        data.weather_block.phenomena && 
+        data.weather_block.phenomena !== '-' &&
+        data.weather_block.start_time &&
+        data.weather_block.start_time !== '-' &&
+        data.weather_block.end_time &&
+        data.weather_block.end_time !== '-') {
+      console.log('檢測到天氣特報:', {
+        phenomena: data.weather_block.phenomena,
+        start_time: data.weather_block.start_time,
+        end_time: data.weather_block.end_time
+      });
+      weatherAlert.value = {
+        title: data.weather_block.phenomena,
+        location: '臺北市', // 可以從後端獲取或使用當前位置
+        startTime: data.weather_block.start_time,
+        endTime: data.weather_block.end_time
+      };
+      showWeatherAlert.value = true;
+      console.log('天氣特報已設置:', weatherAlert.value);
+    } else {
+      console.log('沒有天氣特報');
+    }
+    
+    console.log('=== 數據讀取完成 ===');
+    
+    // 讀取完成後清除 sessionStorage
+    sessionStorage.removeItem('analysisResultData');
+  } catch (error) {
+    console.error('=== 讀取分析結果數據失敗 ===');
+    console.error('錯誤訊息:', error instanceof Error ? error.message : String(error));
   }
 };
 
 onMounted(() => {
-  // 如果有路由參數，更新站點名稱
+  console.log('=== AnalysisResultView onMounted ===');
+  console.log('路由參數:', route.query);
+  
+  // 從路由參數更新起始站資料（作為預設值）
   if (originName.value) {
     originStation.value.name = originName.value;
+    console.log('設置起始站名稱:', originName.value);
   }
+  
+  // 從路由參數更新終點站資料（作為預設值）
   if (destinationName.value) {
     destinationStation.value.name = destinationName.value;
+    console.log('設置終點站名稱:', destinationName.value);
   }
+  
+  // 從 sessionStorage 讀取分析結果數據
+  console.log('準備調用 loadAnalysisData...');
+  loadAnalysisData();
+  console.log('loadAnalysisData 完成');
 });
 </script>
 
@@ -217,6 +405,9 @@ onMounted(() => {
     <!-- AQI/UVI 說明pop-up -->
     <AqiUviInfoDialog v-model="showInfoDialog" />
 
+    <!-- 天氣特報pop-up -->
+    <WeatherAlertDialog v-model="showWeatherAlert" :alert="weatherAlert" />
+
     <!-- 推薦部分 -->
     <div class="flex item-center justify-center py-5 mx-4 mt-4">
       <div>
@@ -227,15 +418,17 @@ onMounted(() => {
         <div class="flex flex-col gap-2 items-start">
             <span
             v-for="tag in recommendationTags"
-            :key="tag"
+            :key="tag.content"
             class="px-8 py-2 rounded-lg text-sm font-medium"
             :class="
-                tag === '天氣晴朗'
+                tag.level === 'good'
                 ? 'bg-[#E8F5E9] text-[#76A732]'
-                : 'bg-primary-100 text-primary-600'
+                : tag.level === 'normal'
+                ? 'bg-primary-100 text-primary-600'
+                : 'bg-orange-100 text-orange-600'
             "
             >
-            {{ tag }}
+            {{ tag.content }}
             </span>
         </div>
       </div>
@@ -247,15 +440,15 @@ onMounted(() => {
     <div class="mx-4 mt-6 mb-6 relative">
       <!-- 虛線連接線 -->
       <div
-        class="absolute left-6 top-0 bottom-0 w-0.5 border-l-2 border-dashed border-primary-300"
-        style="height: calc(100% - 24px); top: 24px"
+        class="absolute left-6 w-0.5 border-l-2 border-dashed border-primary-300"
+        style="top: 0; bottom: 0"
       ></div>
 
       <!-- 起始站卡片 -->
       <div class="relative flex items-start gap-3 mb-4">
         <!-- 起始站圖標（自行車） -->
         <div
-          class="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0 z-10 relative"
+          class="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0 z-0 relative"
         >
           <img :src="iconResultBike" alt="起始站" class="w-6 h-6" />
         </div>
@@ -308,7 +501,10 @@ onMounted(() => {
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <div class="text-xs text-grey-600">目前可租借數量</div>
-              <div class="text-2xl font-extrabold text-primary-500">
+              <div 
+                class="text-2xl font-extrabold"
+                :class="originStation.availableBikes <= 3 ? 'text-secondary-500' : 'text-primary-500'"
+              >
                 {{ originStation.availableBikes }}
               </div>
             </div>
@@ -413,10 +609,10 @@ onMounted(() => {
       </div>
 
       <!-- 終點站卡片 -->
-      <div class="relative flex items-start gap-3">
+      <div class="relative flex items-start gap-3 mb-2">
         <!-- 終點站圖標（目的地） -->
         <div
-          class="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0 z-10 relative"
+          class="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0 z-0 relative"
         >
           <img :src="iconResultDest" alt="終點站" class="w-6 h-6" />
         </div>
@@ -468,8 +664,11 @@ onMounted(() => {
           </div>
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
-              <div class="text-xs text-grey-600 mb-1">目前空位數量</div>
-              <div class="text-2xl font-extrabold text-secondary-500">
+              <div class="text-xs text-grey-600">目前空位數量</div>
+              <div 
+                class="text-2xl font-extrabold"
+                :class="destinationStation.availableSpaces <= 3 ? 'text-secondary-500' : 'text-primary-500'"
+              >
                 {{ destinationStation.availableSpaces }}
               </div>
             </div>
@@ -501,7 +700,7 @@ onMounted(() => {
 
     <!-- 底部操作欄 -->
     <div
-      class="flex fixed bottom-0 left-0 right-0 bg-white border-t border-grey-200 px-4 py-4 flex items-center justify-between"
+      class="flex fixed bottom-0 left-0 right-0 bg-white border-t border-grey-200 px-4 py-4 flex items-center justify-between z-50"
     >
       <button @click="replanRoute" class="flex-[1.5] text-warn-200 font-medium">重新規劃</button>
       <button

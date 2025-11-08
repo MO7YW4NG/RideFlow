@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import MessageModal from '@/components/molecules/MessageModal.vue';
 import BaseDialog from '@/components/atoms/BaseDialog.vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useGoogleMapsStore } from '@/stores/googleMaps';
 import { useTripStore } from '@/stores/trip';
 import type { HistoryStation, SavedTrip } from '@/stores/trip';
@@ -87,6 +87,7 @@ export interface Spot {
 }
 
 const router = useRouter();
+const route = useRoute();
 const googleMapsStore = useGoogleMapsStore();
 const tripStore = useTripStore();
 
@@ -216,10 +217,160 @@ const loadYouBikeData = async () => {
   }
 };
 
-onMounted(() => {
+// 處理從路由參數設置站點的函數
+const setupStationsFromRoute = async () => {
+  // 從路由參數讀取起點和終點
+  const originName = route.query.origin as string;
+  const destinationName = route.query.destination as string;
+  const originNo = route.query.originNo as string;
+  const destNo = route.query.destNo as string;
+  
+  if (!originName && !destinationName) return;
+  
+  // 如果只傳遞了一個站點，清除另一個站點和路線
+  // 注意：如果兩個站點都有傳遞，則不清除任何站點
+  if (originName && !destinationName) {
+    destinationPlace.value = null;
+    destinationInput.value = '';
+    // 清除路線
+    if (directionsRenderer) {
+      directionsRenderer.setDirections({ routes: [] } as any);
+    }
+  } else if (destinationName && !originName) {
+    originPlace.value = null;
+    originInput.value = '';
+    // 清除路線
+    if (directionsRenderer) {
+      directionsRenderer.setDirections({ routes: [] } as any);
+    }
+  }
+  
+  // 如果提供了站點名稱，從站點列表中查找
+  if (originName) {
+    // 優先使用站點編號查找，如果沒有編號則使用名稱查找
+    let originSpot = null;
+    if (originNo) {
+      originSpot = searchSpotList.value.find(spot => String(spot.sno) === String(originNo));
+    }
+    if (!originSpot) {
+      originSpot = searchSpotList.value.find(spot => spot.sna === originName);
+    }
+    
+    if (originSpot) {
+      const lat = typeof originSpot.lat === 'number' ? originSpot.lat : originSpot.latitude ?? 0;
+      const lng = typeof originSpot.lng === 'number' ? originSpot.lng : originSpot.longitude ?? 0;
+      originPlace.value = {
+        id: String(originSpot.sno),
+        name: originSpot.sna,
+        lat,
+        lng,
+        address: originSpot.ar
+      };
+      originInput.value = originSpot.sna;
+      
+      // 將地圖中心移動到選中的起始站
+      if (map && lat && lng) {
+        map.setCenter({ lat, lng });
+        map.setZoom(15);
+      }
+    } else {
+      // 如果找不到，使用地址搜尋
+      await searchAddressForPlace(originName, true);
+    }
+  }
+  
+  if (destinationName) {
+    // 優先使用站點編號查找，如果沒有編號則使用名稱查找
+    let destSpot = null;
+    if (destNo) {
+      destSpot = searchSpotList.value.find(spot => String(spot.sno) === String(destNo));
+    }
+    if (!destSpot) {
+      destSpot = searchSpotList.value.find(spot => spot.sna === destinationName);
+    }
+    
+    if (destSpot) {
+      const lat = typeof destSpot.lat === 'number' ? destSpot.lat : destSpot.latitude ?? 0;
+      const lng = typeof destSpot.lng === 'number' ? destSpot.lng : destSpot.longitude ?? 0;
+      destinationPlace.value = {
+        id: String(destSpot.sno),
+        name: destSpot.sna,
+        lat,
+        lng,
+        address: destSpot.ar
+      };
+      destinationInput.value = destSpot.sna;
+      
+      // 將地圖中心移動到選中的終點站（如果起點未設定，或終點站是唯一設定的）
+      if (map && lat && lng) {
+        if (!originPlace.value) {
+          // 如果只有終點站，移動到終點站
+          map.setCenter({ lat, lng });
+          map.setZoom(15);
+        } else {
+          // 如果兩個站點都有，移動到兩個站點的中間點
+          const originLat = originPlace.value.lat || 0;
+          const originLng = originPlace.value.lng || 0;
+          const centerLat = (originLat + lat) / 2;
+          const centerLng = (originLng + lng) / 2;
+          map.setCenter({ lat: centerLat, lng: centerLng });
+          // 調整縮放以包含兩個站點
+          const bounds = new google.maps.LatLngBounds();
+          bounds.extend({ lat: originLat, lng: originLng });
+          bounds.extend({ lat, lng });
+          map.fitBounds(bounds);
+        }
+      }
+    } else {
+      // 如果找不到，使用地址搜尋
+      await searchAddressForPlace(destinationName, false);
+    }
+  }
+  
+  // 如果起點和終點都已設定，嘗試規劃路線
+  if (originPlace.value && destinationPlace.value) {
+    nextTick(() => {
+      tryRoute();
+    });
+  } else if (map && (originPlace.value || destinationPlace.value)) {
+    // 如果只有一個站點設定，在地圖上顯示該站點的標記
+    nextTick(() => {
+      const place = originPlace.value || destinationPlace.value;
+      if (place && place.lat && place.lng) {
+        clearMarkers();
+        const marker = new google.maps.Marker({
+          position: { lat: place.lat!, lng: place.lng! },
+          map,
+          icon: {
+            url: originPlace.value ? iconOriginUrl : iconDestUrl,
+            scaledSize: new google.maps.Size(48, 69),
+            anchor: new google.maps.Point(24, 69)
+          }
+        });
+        markers.push(marker);
+      }
+    });
+  }
+};
+
+// 監聽地圖準備狀態和站點資料，當地圖和資料都準備好時設置站點
+watch([isMapReady, searchSpotList], async ([ready, spots]) => {
+  if (ready && spots.length > 0) {
+    await setupStationsFromRoute();
+  }
+}, { immediate: true });
+
+// 監聽路由參數變化，當路由參數改變時重新設置站點
+watch(() => route.query, async () => {
+  if (isMapReady.value && searchSpotList.value.length > 0) {
+    await setupStationsFromRoute();
+  }
+}, { deep: true });
+
+onMounted(async () => {
   initMap(currentLocation.value.lat, currentLocation.value.lng);
   setSheetSizes();
-  loadYouBikeData();
+  await loadYouBikeData();
 });
 
 const setMapHeight = () => {
@@ -721,6 +872,54 @@ const searchAddress = (address: string) => {
   });
 };
 
+// 地址搜尋函數（用於設置起點或終點）
+const searchAddressForPlace = (address: string, isOrigin: boolean): Promise<void> => {
+  return new Promise((resolve) => {
+    if (!address || address.trim() === '') {
+      resolve();
+      return;
+    }
+
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: address }, (results, status) => {
+      if (status === 'OK' && results && results[0]) {
+        const location = results[0].geometry.location;
+        const placeData = {
+          id: results[0].place_id || '',
+          name: address,
+          lat: location.lat(),
+          lng: location.lng(),
+          address: results[0].formatted_address || address
+        };
+
+        if (isOrigin) {
+          originPlace.value = placeData;
+          originInput.value = address;
+        } else {
+          destinationPlace.value = placeData;
+          destinationInput.value = address;
+        }
+
+        // 將地圖中心跳轉到選擇的地點
+        if (map) {
+          map.setCenter({ lat: location.lat(), lng: location.lng() });
+          map.setZoom(15);
+        }
+
+        // 如果起點和終點都已設定，嘗試規劃路線
+        if (originPlace.value && destinationPlace.value) {
+          nextTick(() => {
+            tryRoute();
+          });
+        }
+      } else {
+        console.warn('無法找到地址:', address, status);
+      }
+      resolve();
+    });
+  });
+};
+
 // 設置地址搜尋事件監聽
 const setupAddressSearch = () => {
   if (originInputEl.value) {
@@ -1005,8 +1204,10 @@ const confirmRoute = () => {
       destination: destinationPlace.value?.name || '',
       originLat: originPlace.value?.lat?.toString() || '',
       originLng: originPlace.value?.lng?.toString() || '',
+      originNo: originPlace.value?.id || '',
       destLat: destinationPlace.value?.lat?.toString() || '',
-      destLng: destinationPlace.value?.lng?.toString() || ''
+      destLng: destinationPlace.value?.lng?.toString() || '',
+      destNo: destinationPlace.value?.id || ''
     }
   });
 };

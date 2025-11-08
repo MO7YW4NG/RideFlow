@@ -683,6 +683,7 @@ const tryRoute = () => {
     },
     (res, status) => {
       if (status === 'OK' && res) {
+        console.log('res:', res);
         directionsRenderer!.setDirections(res);
         // 加入歷史站點（Ordered Set）
         if (originPlace.value) {
@@ -1102,20 +1103,43 @@ const replanRoute = () => {
                 class="sheet-card flex flex-row items-center justify-center rounded-xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] p-2 gap-2"
               >
                 <!--  兩個icon切換 依照 selectedDest 來切換 -->
-                <template v-if="selectedDest">
-                  <img src="@/assets/images/route-icon.svg" class="w-7 h-auto" alt="" />
-                </template>
-                <template v-else>
-                  <img src="@/assets/images/route-icon-reverted.svg" class="w-7 h-auto" alt="" />
-                </template>
-                <div class="flex flex-col items-center justify-center w-full">
+                <div class="w-7 grid" style="min-height: 28px">
+                  <!-- route-icon -->
+                  <img
+                    src="@/assets/images/route-icon.svg"
+                    class="w-7 h-auto icon-transition"
+                    style="grid-area: 1/1"
+                    :class="{
+                      'z-20 icon-ease-in': selectedDest,
+                      'z-0 icon-ease-out': !selectedDest
+                    }"
+                    alt=""
+                  />
+                  <!-- route-icon-reverted -->
+                  <img
+                    src="@/assets/images/route-icon-reverted.svg"
+                    class="w-7 h-auto icon-transition"
+                    style="grid-area: 1/1"
+                    :class="{
+                      'z-20 icon-ease-in': !selectedDest,
+                      'z-0 icon-ease-out': selectedDest
+                    }"
+                    alt=""
+                  />
+                </div>
+                <div class="flex flex-col items-center justify-center w-full relative">
+                  <!-- Sliding background -->
                   <div
-                    class="rounded-lg p-2 cursor-pointer transition-colors w-full"
+                    class="absolute top-0 left-0 w-full h-[calc(50%-0.125rem)] rounded-lg bg-primary-50 transition-transform duration-300 ease-in-out"
+                    :style="{
+                      transform: selectedDest ? 'translateY(calc(100% + 0.25rem))' : 'translateY(0)'
+                    }"
+                  ></div>
+                  <div
+                    class="rounded-lg p-2 cursor-pointer w-full relative z-10 transition-colors duration-300"
                     :class="{
                       // 'border-2 border-primary-500': !selectedDest,
                       // 'border-2 border-transparent': selectedDest
-                      'bg-white': selectedDest,
-                      'bg-primary-50': !selectedDest
                     }"
                     @click="
                       selectedDest = false;
@@ -1134,12 +1158,10 @@ const replanRoute = () => {
                   </div>
                   <!-- <div class="mx-2 h-0.5 w-full bg-grey-200"></div> -->
                   <div
-                    class="rounded-lg p-2 mx-2 cursor-pointer transition-colors w-full"
+                    class="rounded-lg p-2 mx-2 cursor-pointer w-full relative z-10 transition-colors duration-300"
                     :class="{
                       // 'border-2 border-primary-500': selectedDest,
                       // 'border-2 border-transparent': !selectedDest
-                      'bg-primary-50': selectedDest,
-                      'bg-white': !selectedDest
                     }"
                     @click="
                       selectedDest = true;
@@ -1169,11 +1191,21 @@ const replanRoute = () => {
             <!-- 歷史 / 常用 切換 + 列表 -->
             <div class="px-4 mt-4">
               <!-- Segmented toggle -->
-              <div class="bg-white rounded-full p-1 mb-3 flex border border-grey-200">
+              <div class="bg-white rounded-full p-1 mb-3 flex border border-grey-200 relative">
+                <!-- Sliding background -->
+                <div
+                  class="absolute top-1 left-1 w-[calc(50%-0.125rem)] h-[calc(100%-0.5rem)] rounded-full bg-primary-100 shadow transition-transform duration-500 ease-in-out"
+                  :style="{
+                    transform:
+                      activeList === 'history'
+                        ? 'translateX(0)'
+                        : 'translateX(calc(100% + 0.25rem))'
+                  }"
+                ></div>
                 <button
-                  class="flex-1 flex items-center justify-center py-2 rounded-full font-bold"
+                  class="flex-1 flex items-center justify-center py-2 rounded-full font-bold relative z-10 transition-colors duration-500"
                   :class="{
-                    'bg-primary-100 text-white shadow': activeList === 'history',
+                    'text-white': activeList === 'history',
                     'text-grey-600': activeList !== 'history'
                   }"
                   @click="activeList = 'history'"
@@ -1217,9 +1249,9 @@ const replanRoute = () => {
                   </span>
                 </button>
                 <button
-                  class="flex-1 flex items-center justify-center py-2 rounded-full font-bold"
+                  class="flex-1 flex items-center justify-center py-2 rounded-full font-bold relative z-10 transition-colors duration-300"
                   :class="{
-                    'bg-primary-100 text-white shadow': activeList === 'favorite',
+                    'text-white': activeList === 'favorite',
                     'text-grey-600': activeList !== 'favorite'
                   }"
                   @click="activeList = 'favorite'"
@@ -1687,5 +1719,35 @@ const replanRoute = () => {
   font-weight: 500;
   color: #2eb6c7; /* grey-900 */
   cursor: pointer;
+}
+
+/* Icon transition styles */
+.icon-transition {
+  transition:
+    -webkit-mask-position 0.3s ease-in-out,
+    mask-position 0.3s ease-in-out,
+    opacity 0.3s ease-in-out;
+  -webkit-mask-size: 100% 200%;
+  mask-size: 100% 200%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* 頂層圖標 (ease in) - 由下而上漸層顯示 */
+.icon-ease-in {
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 100%);
+  mask-image: linear-gradient(to top, transparent 0%, black 100%);
+  -webkit-mask-position: 0% 0%;
+  mask-position: 0% 0%;
+  opacity: 1;
+}
+
+/* 底層圖標 (ease out) - 由上而下漸層隱藏 */
+.icon-ease-out {
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  -webkit-mask-position: 0% 0%;
+  mask-position: 0% 0%;
+  opacity: 0;
 }
 </style>

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import SurroundingServiceView from '../views/SurroundingServiceView.vue';
 import AnalysisLoadingView from '../views/AnalysisLoadingView.vue';
+import AnalysisResultView from '../views/AnalysisResultView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,6 +24,14 @@ const router = createRouter({
         title: '分析中...'
       },
       component: AnalysisLoadingView
+    },
+    {
+      path: '/analysis-result',
+      name: 'analysis-result',
+      meta: {
+        title: '分析結果'
+      },
+      component: AnalysisResultView
     }
   ]
 });

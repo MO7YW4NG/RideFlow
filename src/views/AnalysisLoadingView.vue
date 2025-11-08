@@ -41,17 +41,20 @@ const analysisSteps = ref<Step[]>([
 const handleAnalysisComplete = () => {
   console.log('分析完成！', { origin, destination });
   
-  // TODO: 跳轉到結果頁面
-  // 當結果頁面建立後，將以下代碼改為：
-  // router.push({
-  //   name: 'analysis-result',
-  //   query: { origin, destination }
-  // });
-  
-  // 暫時跳轉回 SurroundingServiceView
+  // 跳轉到分析結果頁面
   setTimeout(() => {
     isLoading.value = false;
-    router.push({ name: 'home' });
+    router.push({
+      name: 'analysis-result',
+      query: {
+        origin: origin || '',
+        destination: destination || '',
+        originLat: route.query.originLat || '',
+        originLng: route.query.originLng || '',
+        destLat: route.query.destLat || '',
+        destLng: route.query.destLng || ''
+      }
+    });
   }, 1000);
 };
 

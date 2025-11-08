@@ -92,16 +92,58 @@ const startRide = () => {
   console.log('開始騎乘');
 };
 
-// 切換起始站
-const switchOrigin = () => {
-  // TODO: 實現切換起始站邏輯
-  console.log('切換起始站');
+// 起始站選單資料（包含當前選中的站點）
+const originStationOptions = computed(() => {
+  const options = [
+    { name: '捷運公館站(3號出口)', availableBikes: 12 },
+    { name: '台大醫院站(2號出口)', availableBikes: 8 },
+    { name: '中正紀念堂站(5號出口)', availableBikes: 15 }
+  ];
+  return options;
+});
+
+// 終點站選單資料（包含當前選中的站點）
+const destinationStationOptions = computed(() => {
+  const options = [
+    { name: '臺大綜合體育館體育場前', availableSpaces: 8 },
+    { name: '台大圖書館前', availableSpaces: 5 },
+    { name: '台大總圖書館', availableSpaces: 12 }
+  ];
+  return options;
+});
+
+// Select 元素引用
+const originSelectRef = ref<HTMLSelectElement | null>(null);
+const destinationSelectRef = ref<HTMLSelectElement | null>(null);
+
+// 打開起始站選單
+const openOriginSelect = () => {
+  originSelectRef.value?.click();
 };
 
-// 切換終點站
-const switchDestination = () => {
-  // TODO: 實現切換終點站邏輯
-  console.log('切換終點站');
+// 打開終點站選單
+const openDestinationSelect = () => {
+  destinationSelectRef.value?.click();
+};
+
+// 選擇起始站
+const selectOriginStation = (event: Event) => {
+  const target = event.target as HTMLSelectElement;
+  const selectedName = target.value;
+  const station = originStationOptions.value.find(s => s.name === selectedName);
+  if (station) {
+    originStation.value = station;
+  }
+};
+
+// 選擇終點站
+const selectDestinationStation = (event: Event) => {
+  const target = event.target as HTMLSelectElement;
+  const selectedName = target.value;
+  const station = destinationStationOptions.value.find(s => s.name === selectedName);
+  if (station) {
+    destinationStation.value = station;
+  }
 };
 
 onMounted(() => {
@@ -225,27 +267,43 @@ onMounted(() => {
                     {{ originStation.name }}
                 </div>
             </div>
-            <button
-              @click="switchOrigin"
-              class="px-3 py-1.5 bg-primary-100 text-primary-600 rounded-full text-sm font-medium flex items-center gap-1"
-            >
-              切換
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+            <div class="relative">
+              <button
+                @click="openOriginSelect"
+                class="px-3 py-1.5 bg-primary-100 text-primary-600 rounded-full text-sm font-medium flex items-center gap-1"
               >
-                <path
-                  d="M6 9L12 15L18 9"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
+                切換
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M6 9L12 15L18 9"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <select
+                ref="originSelectRef"
+                @change="selectOriginStation"
+                :value="originStation.name"
+                class="absolute inset-0 opacity-0 cursor-pointer"
+              >
+                <option
+                  v-for="(station, index) in originStationOptions"
+                  :key="index"
+                  :value="station.name"
+                >
+                  {{ station.name }}
+                </option>
+              </select>
+            </div>
           </div>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -370,27 +428,43 @@ onMounted(() => {
                     {{ destinationStation.name }}
                 </div>
             </div>
-            <button
-              @click="switchDestination"
-              class="px-3 py-1.5 bg-primary-100 text-primary-600 rounded-full text-sm font-medium flex items-center gap-1"
-            >
-              切換
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+            <div class="relative">
+              <button
+                @click="openDestinationSelect"
+                class="px-3 py-1.5 bg-primary-100 text-primary-600 rounded-full text-sm font-medium flex items-center gap-1"
               >
-                <path
-                  d="M6 9L12 15L18 9"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
+                切換
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M6 9L12 15L18 9"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <select
+                ref="destinationSelectRef"
+                @change="selectDestinationStation"
+                :value="destinationStation.name"
+                class="absolute inset-0 opacity-0 cursor-pointer"
+              >
+                <option
+                  v-for="(station, index) in destinationStationOptions"
+                  :key="index"
+                  :value="station.name"
+                >
+                  {{ station.name }}
+                </option>
+              </select>
+            </div>
           </div>
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">

@@ -50,7 +50,7 @@ const closeDialog = () => {
                         <div class="flex-1">
                           <div class="text-sm font-bold text-grey-900 mb-1">0-50</div>
                           <div class="text-xs text-grey-700 leading-relaxed">
-                            空氣污染程度低或無污染,可正常戶外活動
+                            空氣污染程度低或無污染，可正常戶外活動
                           </div>
                         </div>
                       </div>
@@ -66,7 +66,7 @@ const closeDialog = () => {
                         <div class="flex-1">
                           <div class="text-sm font-bold text-grey-900 mb-1">51-100</div>
                           <div class="text-xs text-grey-700 leading-relaxed">
-                            對少數極敏感族群產生輕微影響,可能產生的咳嗽或呼吸急促症狀,尚可正常戶外活動
+                            對少數極敏感族群產生輕微影響，可能產生的咳嗽或呼吸急促症狀，尚可正常戶外活動
                           </div>
                         </div>
                       </div>
@@ -122,7 +122,7 @@ const closeDialog = () => {
                         <div class="flex-1">
                           <div class="text-sm font-bold text-grey-900 mb-1">3-5</div>
                           <div class="text-xs text-grey-700 leading-relaxed">
-                            無保護暴露於陽光中有較輕傷害的風險,正午陽光需防護措施
+                            無保護暴露於陽光中有較輕傷害的風險，正午陽光需防護措施
                           </div>
                         </div>
                       </div>
@@ -138,7 +138,7 @@ const closeDialog = () => {
                         <div class="flex-1">
                           <div class="text-sm font-bold text-grey-900 mb-1">6以上</div>
                           <div class="text-xs text-grey-700 leading-relaxed">
-                            30分鐘內會曬傷,建議做好防護措施
+                            30分鐘內會曬傷，建議做好防護措施
                           </div>
                         </div>
                       </div>

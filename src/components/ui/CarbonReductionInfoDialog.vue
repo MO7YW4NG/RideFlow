@@ -50,7 +50,7 @@ const closeDialog = () => {
                       <h4 class="text-sm font-bold text-grey-900">定義</h4>
                     </div>
                     <div class="text-xs text-grey-700 leading-relaxed pl-7">
-                      依據 YouBike微笑單車官網公布之減碳量規則公布: 減碳量計算以單次使用YouBike取代原私人運具可減少
+                      依據 YouBike微笑單車官網公布之減碳量規則公布：減碳量計算以單次使用YouBike取代原私人運具可減少
                       <span class="font-bold text-grey-900">0.196 kg CO2e</span>
                       為每次減碳量之記錄
                     </div>
@@ -69,7 +69,7 @@ const closeDialog = () => {
                       <h4 class="text-sm font-bold text-grey-900">卡路里計算公式</h4>
                     </div>
                     <div class="text-xs font-bold text-grey-700 leading-relaxed pl-7">
-                      減碳量計算方式=同距離下燃油汽車碳排放量-搭乘大眾運具的碳排放量
+                      減碳量計算方式=同距離下燃油汽車碳排放量 - 搭乘大眾運具的碳排放量
                     </div>
                   </div>
 
@@ -86,7 +86,7 @@ const closeDialog = () => {
                       <h4 class="text-sm font-bold text-grey-900">注意事項</h4>
                     </div>
                     <div class="text-xs text-grey-700 leading-relaxed pl-7">
-                      本計算方式依悠遊卡公司提供之資料建立。若中央政府機關未來公告新版減碳量計算指導,將依規更新與公告。
+                      本計算方式依悠遊卡公司提供之資料建立。若中央政府機關未來公告新版減碳量計算指導，將依規更新與公告。
                     </div>
                   </div>
                 </div>

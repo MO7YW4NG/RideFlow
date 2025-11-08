@@ -61,8 +61,7 @@ const closeDialog = () => {
                       </p>
                       <div class="h-px bg-grey-200 my-2"></div>
                       <p>
-                        以腳踏車休閒騎乘(8-16km/h)為基準,METs 為
-                        <span class="font-bold text-grey-900">5</span>
+                        以腳踏車休閒騎乘(8-16km/h)為基準，METs 為5
                       </p>
                     </div>
                   </div>
@@ -98,7 +97,7 @@ const closeDialog = () => {
                       <h4 class="text-sm font-bold text-grey-900">注意事項</h4>
                     </div>
                     <div class="text-xs text-grey-700 leading-relaxed pl-7">
-                      結果僅供參考,實際消耗量會因地形、風阻及個人體能差異而變化。
+                      結果僅供參考，實際消耗量會因地形、風阻及個人體能差異而變化。
                     </div>
                   </div>
                 </div>

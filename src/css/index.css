@@ -7,6 +7,11 @@
     font-family: '"PingFang TC", Roboto';
   }
 
+  html,
+  body {
+    touch-action: manipulation;
+  }
+
   button,
   input,
   optgroup,

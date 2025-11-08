@@ -564,7 +564,6 @@ onMounted(() => {
             <div class="flex flex-col items-start">
               <div class="flex items-center gap-1">
                 <span class="text-xs text-grey-600">減碳量</span>
-                
               </div>
               <div class="flex items-center gap-1 text-xl font-extrabold">
                 <span class="text-primary-500">{{ routeDetails.carbonReduction }}</span>
@@ -585,9 +584,16 @@ onMounted(() => {
            <img :src="resultHeat" alt="heat" class="w-6 h-6">
             <div class="flex flex-col items-start">
               <span class="text-xs text-grey-600">消耗熱量</span>
-              <div class="text-xl font-extrabold">
+              <div class="flex item-center text-xl font-extrabold gap-1">
                 <span class="text-primary-500">{{ routeDetails.caloriesBurned }}</span>
                 <span class="text-grey-900"> 大卡</span>
+                <button class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M10.8333 5.83333C10.8333 6.29357 10.4602 6.66667 9.99999 6.66667C9.53975 6.66667 9.16666 6.29357 9.16666 5.83333C9.16666 5.3731 9.53975 5 9.99999 5C10.4602 5 10.8333 5.3731 10.8333 5.83333Z" fill="currentColor"/>
+                    <path d="M10 14.1666V8.33325" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>

@@ -1202,7 +1202,7 @@ const onSwitchOriginDestination = () => {
 };
 
 // 確定行程，開始分析
-const confirmRoute = () => {
+const confirmRoute = async () => {
   // 準備 query 參數（包含所有原有的參數）
   const queryParams: Record<string, string> = {
     origin: originPlace.value?.name || '',
@@ -1215,8 +1215,59 @@ const confirmRoute = () => {
     destNo: destinationPlace.value?.id || ''
   };
   
+  // 如果路線結果不存在，先觸發路線規劃並等待完成
+  if (!routeResult.value || !routeResult.value.routes || routeResult.value.routes.length === 0) {
+    console.log('路線結果不存在，開始規劃路線...');
+    
+    // 確保有起點和終點
+    if (!originPlace.value || !destinationPlace.value) {
+      console.error('起點或終點未設定，無法規劃路線');
+      return;
+    }
+    
+    // 等待路線規劃完成
+    await new Promise<void>((resolve) => {
+      if (!directionsService) {
+        console.error('directionsService 未初始化');
+        resolve();
+        return;
+      }
+      
+      directionsService.route(
+        {
+          origin: { lat: Number(originPlace.value!.lat), lng: Number(originPlace.value!.lng) },
+          destination: {
+            lat: Number(destinationPlace.value!.lat),
+            lng: Number(destinationPlace.value!.lng)
+          },
+          travelMode: google.maps.TravelMode.BICYCLING
+        },
+        (res, status) => {
+          if (status === 'OK' && res) {
+            console.log('路線規劃完成:', res);
+            routeResult.value = res;
+            // 如果地圖上還沒有顯示路線，則顯示
+            if (directionsRenderer && !directionsRenderer.getDirections()) {
+              directionsRenderer.setDirections(res);
+            }
+          } else {
+            console.error('路線規劃失敗:', status);
+            routeResult.value = null;
+          }
+          resolve();
+        }
+      );
+    });
+  }
+  
+  // 調試：檢查 routeResult 狀態
+  console.log('=== confirmRoute 調試 ===');
+  console.log('routeResult.value:', routeResult.value);
+  console.log('routeResult.value?.routes:', routeResult.value?.routes);
+  console.log('routeResult.value?.routes?.length:', routeResult.value?.routes?.length);
+  
   // 將路線結果序列化並通過 query 參數傳遞（額外添加，不影響原有參數）
-  if (routeResult.value && routeResult.value.routes) {
+  if (routeResult.value && routeResult.value.routes && routeResult.value.routes.length > 0) {
     // 只保存 routes 數據，因為這是用戶需要的
     const routesData = routeResult.value.routes.map(route => ({
       bounds: route.bounds ? {
@@ -1278,10 +1329,19 @@ const confirmRoute = () => {
     queryParams.routes = encodeURIComponent(routesJson);
     
     console.log('路線數據已準備通過 query 參數傳遞，數據大小:', routesJson.length, '字符');
+    console.log('queryParams.routes 是否存在:', 'routes' in queryParams);
     
     // 同時也保存到 sessionStorage 作為備份（如果 URL 太長可以從這裡讀取）
     sessionStorage.setItem('routeData', routesJson);
+  } else {
+    console.warn('⚠️ 路線數據不存在，無法傳遞 routes 參數');
+    console.warn('routeResult.value:', routeResult.value);
+    console.warn('routeResult.value?.routes:', routeResult.value?.routes);
   }
+  
+  // 調試：檢查最終的 queryParams
+  console.log('最終 queryParams:', queryParams);
+  console.log('queryParams 的 keys:', Object.keys(queryParams));
   
   // 跳轉到分析載入頁面
   router.push({

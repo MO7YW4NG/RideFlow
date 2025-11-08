@@ -94,9 +94,9 @@ const weatherAlert = ref<{
 const showWeatherAlert = ref(false);
 
 
-// 返回上一頁
+// 返回上一頁（直接跳轉到 SurroundingServiceView，避免回到 loading 頁面）
 const goBack = () => {
-  router.back();
+  router.push({ name: 'home' });
 };
 
 // 重新規劃

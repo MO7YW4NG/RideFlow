@@ -138,9 +138,10 @@ const handleAnalysisComplete = () => {
   });
   
   // 跳轉到分析結果頁面，通過 state 傳遞數據
+  // 使用 replace 而不是 push，避免 loading 頁面留在歷史記錄中
   setTimeout(() => {
     isLoading.value = false;
-    router.push({
+    router.replace({
       name: 'analysis-result',
       query: {
         origin: origin || '',

@@ -212,7 +212,7 @@ watch(isShowLocaionModal, () => {
     @apply -ml-[14px] -mt-[43px];
     @apply h-11 w-7;
     @apply cursor-pointer;
-    @apply bg-[url('@/assets/images/marker.png')] bg-contain;
+    @apply bg-[url('@/assets/images/marker.webp')] bg-contain;
   }
 }
 </style>

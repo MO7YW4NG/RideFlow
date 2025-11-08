@@ -5,7 +5,7 @@ import AqiUviInfoDialog from '@/components/ui/AqiUviInfoDialog.vue';
 import WeatherAlertDialog from '@/components/ui/WeatherAlertDialog.vue';
 import iconResultBike from '@/assets/images/icon-result-bike.svg';
 import iconResultDest from '@/assets/images/icon-result-dest.svg';
-import mascot from '@/assets/images/mascot-ideal.png';
+import mascot from '@/assets/images/mascot-ideal.webp';
 import resultRain from '@/assets/images/icon-result-rain.svg';
 import resultSun from '@/assets/images/icon-result-sun.svg';
 import resultAir from '@/assets/images/icon-result-air.svg';
@@ -410,8 +410,8 @@ onMounted(() => {
 
     <!-- 推薦部分 -->
     <div class="flex item-center justify-center py-5 mx-4 mt-4">
-      <div>
-            <div class="flex py-2 items-center">
+      <div class="flex-1">
+        <div class="flex py-2 items-center">
             <div class="text-2xl font-extrabold text-[#76A732] mb-2">非常適合</div>
             <div class="text-2xl font-extrabold text-[gray-900] mb-2">騎乘</div>
         </div>
@@ -433,7 +433,7 @@ onMounted(() => {
         </div>
       </div>
     <!-- image -->
-      <img :src="mascot" alt="mascot" class="w-1/2">
+      <img :src="mascot" alt="mascot" class="flex-1 w-1/2 max-w-[200px]">
     </div>
 
     <!-- 路線信息區域 -->

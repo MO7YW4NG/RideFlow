@@ -1243,7 +1243,7 @@ const replanRoute = () => {
           @click="getPositionClick"
           :style="{ bottom: sheetHeight + 10 + 'px', top: 'auto' }"
         >
-          <img src="@/assets/images/gps.png" width="20" alt="" />
+          <img src="@/assets/images/gps.webp" width="20" alt="" />
         </div>
 
         <!-- 底部面板：上車囉/今天去哪玩？、快捷、起迄輸入、歷史與常用 -->

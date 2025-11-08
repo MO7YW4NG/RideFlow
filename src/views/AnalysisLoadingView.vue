@@ -86,10 +86,13 @@ const fetchAnalysisData = async () => {
     const data = response.data;
     apiData.value = data;
     
-    // 將數據存儲到 sessionStorage，供 AnalysisResultView 使用
+    // 將數據存儲到 sessionStorage 作為備份，供 AnalysisResultView 使用
     sessionStorage.setItem('analysisResultData', JSON.stringify(data));
+    // 同時存儲時間戳，用於驗證數據有效性
+    sessionStorage.setItem('analysisResultDataTimestamp', Date.now().toString());
     
     console.log('=== 數據獲取完成 ===');
+    console.log('數據已存儲到 sessionStorage');
     
     // API 返回後，將最後一步的 async 設為 false，觸發完成
     // 使用 nextTick 確保響應式更新能夠正確觸發
@@ -129,8 +132,12 @@ const fetchAnalysisData = async () => {
 // 處理 MultiStepLoader 完成事件
 const handleAnalysisComplete = () => {
   console.log('分析完成！', { origin, destination });
+  console.log('準備跳轉到結果頁面，數據狀態:', {
+    hasApiData: !!apiData.value,
+    hasSessionStorage: !!sessionStorage.getItem('analysisResultData')
+  });
   
-  // 跳轉到分析結果頁面
+  // 跳轉到分析結果頁面，通過 state 傳遞數據
   setTimeout(() => {
     isLoading.value = false;
     router.push({
@@ -144,6 +151,9 @@ const handleAnalysisComplete = () => {
         destLat: destLat || '',
         destLng: destLng || '',
         destNo: destNo || ''
+      },
+      state: {
+        analysisResultData: apiData.value
       }
     });
   }, 1000);

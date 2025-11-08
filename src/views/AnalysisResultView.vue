@@ -216,19 +216,44 @@ const selectDestinationStation = (event: Event) => {
   }
 };
 
-// 從 sessionStorage 讀取分析結果數據
+// 從路由 state 或 sessionStorage 讀取分析結果數據
 const loadAnalysisData = () => {
   try {
     console.log('=== 開始讀取分析結果數據 ===');
     
-    // 從 sessionStorage 讀取數據
-    const storedData = sessionStorage.getItem('analysisResultData');
-    if (!storedData) {
-      console.warn('沒有找到存儲的分析結果數據');
-      return;
-    }
+    let data = null;
     
-    const data = JSON.parse(storedData);
+    // 優先從路由 state 讀取數據（更可靠）
+    const routeState = history.state;
+    if (routeState && routeState.analysisResultData) {
+      console.log('從路由 state 讀取數據');
+      data = routeState.analysisResultData;
+    } else {
+      // 如果路由 state 沒有數據，從 sessionStorage 讀取
+      console.log('從 sessionStorage 讀取數據');
+      const storedData = sessionStorage.getItem('analysisResultData');
+      const timestamp = sessionStorage.getItem('analysisResultDataTimestamp');
+      
+      if (!storedData) {
+        console.warn('沒有找到存儲的分析結果數據');
+        return;
+      }
+      
+      // 檢查數據是否過期（超過 5 分鐘）
+      if (timestamp) {
+        const timestampNum = parseInt(timestamp, 10);
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        if (now - timestampNum > fiveMinutes) {
+          console.warn('存儲的數據已過期，清除舊數據');
+          sessionStorage.removeItem('analysisResultData');
+          sessionStorage.removeItem('analysisResultDataTimestamp');
+          return;
+        }
+      }
+      
+      data = JSON.parse(storedData);
+    }
     console.log('讀取的數據:', data);
     console.log('數據類型:', typeof data);
     console.log('數據 keys:', Object.keys(data || {}));
@@ -314,11 +339,16 @@ const loadAnalysisData = () => {
     
     console.log('=== 數據讀取完成 ===');
     
-    // 讀取完成後清除 sessionStorage
-    sessionStorage.removeItem('analysisResultData');
+    // 讀取完成後清除 sessionStorage（延遲清除，確保數據已正確加載）
+    setTimeout(() => {
+      sessionStorage.removeItem('analysisResultData');
+      sessionStorage.removeItem('analysisResultDataTimestamp');
+      console.log('已清除 sessionStorage 中的分析結果數據');
+    }, 1000);
   } catch (error) {
     console.error('=== 讀取分析結果數據失敗 ===');
     console.error('錯誤訊息:', error instanceof Error ? error.message : String(error));
+    console.error('錯誤詳情:', error);
   }
 };
 

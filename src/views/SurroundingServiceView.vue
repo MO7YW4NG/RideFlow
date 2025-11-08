@@ -5,6 +5,10 @@ import { useRouter, useRoute } from 'vue-router';
 import { useGoogleMapsStore } from '@/stores/googleMaps';
 import { useTripStore } from '@/stores/trip';
 import type { HistoryStation, SavedTrip } from '@/stores/trip';
+import { useUserStore, type User } from '@/stores/user';
+import { useConnectionMessage } from '@/composables/useConnectionMessage';
+import { useHandleConnectionData } from '@/composables/useHandleConnectionData';
+import { storeToRefs } from 'pinia';
 import axios from 'axios';
 import { onMounted, onUnmounted, ref, watch, nextTick, computed } from 'vue';
 import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock';
@@ -90,6 +94,7 @@ const router = useRouter();
 const route = useRoute();
 const googleMapsStore = useGoogleMapsStore();
 const tripStore = useTripStore();
+const userStore = useUserStore();
 
 /** 搜尋結果 */
 const searchSpotList = ref<Spot[]>([]);
@@ -138,6 +143,15 @@ const newFavoriteName = ref('');
 const pinToHome = ref(false);
 const activeList = ref<'history' | 'favorite'>('history');
 const editingFavorite = ref<SavedTrip | null>(null);
+const { user } = storeToRefs(userStore);
+
+const handleUserInfo = (event: { data: string }) => {
+  const result: { name: string; data: User } = JSON.parse(event.data);
+  user.value = result.data;
+};
+
+useConnectionMessage('userinfo', null);
+useHandleConnectionData(handleUserInfo);
 
 const saveFavorite = () => {
   if (!newFavoriteName.value) return;
@@ -1210,7 +1224,8 @@ const confirmRoute = async () => {
     originNo: originPlace.value?.id || '',
     destLat: destinationPlace.value?.lat?.toString() || '',
     destLng: destinationPlace.value?.lng?.toString() || '',
-    destNo: destinationPlace.value?.id || ''
+    destNo: destinationPlace.value?.id || '',
+    gender: user.value?.idNo ? (user.value.idNo.substring(1, 2) === '1' ? 'M' : 'F') : 'M'
   };
   
   // 如果路線結果不存在，先觸發路線規劃並等待完成

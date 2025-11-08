@@ -18,6 +18,7 @@ const destLat = route.query.destLat as string | undefined;
 const destLng = route.query.destLng as string | undefined;
 const destNo = route.query.destNo as string | undefined;
 const routesParam = route.query.routes as string | undefined;
+const gender = (route.query.gender as string) || 'M';
 
 // API 數據
 const apiData = ref<any>(null);
@@ -91,7 +92,8 @@ const fetchAnalysisData = async () => {
       originNo: originNo || '',
       destLat: destLat || '',
       destLng: destLng || '',
-      destNo: destNo || ''
+      destNo: destNo || '',
+      gender: gender
     };
     
     // 如果有 routes 數據，添加到請求參數中
@@ -167,7 +169,8 @@ const handleAnalysisComplete = () => {
       originNo: originNo || '',
       destLat: destLat || '',
       destLng: destLng || '',
-      destNo: destNo || ''
+      destNo: destNo || '',
+      gender: gender
     };
     
     // 如果有 routes 參數，也傳遞過去

@@ -17,6 +17,7 @@ const originNo = route.query.originNo as string | undefined;
 const destLat = route.query.destLat as string | undefined;
 const destLng = route.query.destLng as string | undefined;
 const destNo = route.query.destNo as string | undefined;
+const routesParam = route.query.routes as string | undefined;
 
 // API 數據
 const apiData = ref<any>(null);
@@ -52,10 +53,37 @@ const analysisSteps = ref<Step[]>([
 // 從後端獲取分析結果數據
 const fetchAnalysisData = async () => {
   try {
-    console.log('=== 開始獲取分析結果數據 ===');
+    // 解析 routes 參數
+    let routesData = null;
+    if (routesParam) {
+      try {
+        const decodedRoutes = decodeURIComponent(routesParam);
+        routesData = JSON.parse(decodedRoutes);
+      } catch (error) {
+        // 如果 query 參數解析失敗，嘗試從 sessionStorage 讀取
+        const sessionRoutes = sessionStorage.getItem('routeData');
+        if (sessionRoutes) {
+          try {
+            routesData = JSON.parse(sessionRoutes);
+          } catch (e) {
+            console.error('從 sessionStorage 解析 routes 失敗:', e);
+          }
+        }
+      }
+    } else {
+      // 如果 query 參數中沒有 routes，嘗試從 sessionStorage 讀取
+      const sessionRoutes = sessionStorage.getItem('routeData');
+      if (sessionRoutes) {
+        try {
+          routesData = JSON.parse(sessionRoutes);
+        } catch (e) {
+          console.error('從 sessionStorage 解析 routes 失敗:', e);
+        }
+      }
+    }
     
     // 構建請求參數
-    const requestData = {
+    const requestData: any = {
       origin: origin || '',
       destination: destination || '',
       originLat: originLat || '',
@@ -66,22 +94,20 @@ const fetchAnalysisData = async () => {
       destNo: destNo || ''
     };
     
-    console.log('請求參數:', requestData);
+    // 如果有 routes 數據，添加到請求參數中
+    if (routesData) {
+      requestData.routes = routesData;
+    }
     
     // POST 請求，參數在請求體中
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
     const apiUrl = `${backendUrl}route/analysis`;
-    console.log('後端 URL:', backendUrl);
-    console.log('API URL:', apiUrl);
     
     const response = await axios.post(apiUrl, requestData, {
       headers: {
         'Content-Type': 'application/json'
       }
     });
-    
-    console.log('API 響應狀態:', response.status);
-    console.log('API 響應數據:', response.data);
     
     const data = response.data;
     apiData.value = data;
@@ -90,9 +116,6 @@ const fetchAnalysisData = async () => {
     sessionStorage.setItem('analysisResultData', JSON.stringify(data));
     // 同時存儲時間戳，用於驗證數據有效性
     sessionStorage.setItem('analysisResultDataTimestamp', Date.now().toString());
-    
-    console.log('=== 數據獲取完成 ===');
-    console.log('數據已存儲到 sessionStorage');
     
     // API 返回後，將最後一步的 async 設為 false，觸發完成
     // 使用 nextTick 確保響應式更新能夠正確觸發
@@ -109,8 +132,7 @@ const fetchAnalysisData = async () => {
     }
     
   } catch (error) {
-    console.error('=== 獲取分析結果數據失敗 ===');
-    console.error('錯誤訊息:', error instanceof Error ? error.message : String(error));
+    console.error('獲取分析結果數據失敗:', error instanceof Error ? error.message : String(error));
     
     apiError.value = error instanceof Error ? error : new Error(String(error));
     
@@ -131,28 +153,31 @@ const fetchAnalysisData = async () => {
 
 // 處理 MultiStepLoader 完成事件
 const handleAnalysisComplete = () => {
-  console.log('分析完成！', { origin, destination });
-  console.log('準備跳轉到結果頁面，數據狀態:', {
-    hasApiData: !!apiData.value,
-    hasSessionStorage: !!sessionStorage.getItem('analysisResultData')
-  });
-  
   // 跳轉到分析結果頁面，通過 state 傳遞數據
   // 使用 replace 而不是 push，避免 loading 頁面留在歷史記錄中
   setTimeout(() => {
     isLoading.value = false;
+    
+    // 構建 query 參數
+    const queryParams: Record<string, string> = {
+      origin: origin || '',
+      destination: destination || '',
+      originLat: originLat || '',
+      originLng: originLng || '',
+      originNo: originNo || '',
+      destLat: destLat || '',
+      destLng: destLng || '',
+      destNo: destNo || ''
+    };
+    
+    // 如果有 routes 參數，也傳遞過去
+    if (routesParam) {
+      queryParams.routes = routesParam;
+    }
+    
     router.replace({
       name: 'analysis-result',
-      query: {
-        origin: origin || '',
-        destination: destination || '',
-        originLat: originLat || '',
-        originLng: originLng || '',
-        originNo: originNo || '',
-        destLat: destLat || '',
-        destLng: destLng || '',
-        destNo: destNo || ''
-      },
+      query: queryParams,
       state: {
         analysisResultData: apiData.value
       }
@@ -168,7 +193,7 @@ const handleAnalysisClose = () => {
 
 // 處理 MultiStepLoader 狀態變化
 const handleAnalysisStateChange = (index: number) => {
-  console.log(`當前分析步驟: ${index + 1}`);
+  // 狀態變化處理（如需要可添加邏輯）
 };
 
 // 組件掛載後自動開始載入和 API 調用

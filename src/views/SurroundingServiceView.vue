@@ -595,7 +595,6 @@ const successCallback = (position: GeolocationPosition) => {
   map.setCenter(marker.getPosition()!);
 };
 const errorCallback = (error: any) => {
-  console.log(error);
   if (error.code === 1) {
     // 使用者未開啟定位
     isShowGeoError.value = true;
@@ -638,8 +637,6 @@ const updateMarkers = async () => {
         ).toFixed(1)
       )
     }));
-
-  // console.log('filteredSpotList:', filteredSpotList.value);
 
   // Clear existing markers
   clearMarkers();
@@ -708,7 +705,6 @@ const updateMarkers = async () => {
 
       // 獲取所選擇的 spot 的所有屬性
       selectedSpot.value = spot;
-      console.log('Selected spot:', selectedSpot);
     });
 
     markers.push(marker);
@@ -837,10 +833,11 @@ const tryRoute = () => {
     },
     (res, status) => {
       if (status === 'OK' && res) {
-        console.log('res:', res);
         directionsRenderer!.setDirections(res);
+        
         // 保存路線結果，供後續傳遞到 loading 頁面
         routeResult.value = res;
+        
         // 加入歷史站點（Ordered Set）
         if (originPlace.value) {
           tripStore.addHistory({ place: originPlace.value });
@@ -850,6 +847,7 @@ const tryRoute = () => {
         }
       } else {
         // 如果路線規劃失敗，清除保存的路線結果
+        console.error('路線規劃失敗，status:', status);
         routeResult.value = null;
       }
     }
@@ -1217,8 +1215,6 @@ const confirmRoute = async () => {
   
   // 如果路線結果不存在，先觸發路線規劃並等待完成
   if (!routeResult.value || !routeResult.value.routes || routeResult.value.routes.length === 0) {
-    console.log('路線結果不存在，開始規劃路線...');
-    
     // 確保有起點和終點
     if (!originPlace.value || !destinationPlace.value) {
       console.error('起點或終點未設定，無法規劃路線');
@@ -1244,7 +1240,6 @@ const confirmRoute = async () => {
         },
         (res, status) => {
           if (status === 'OK' && res) {
-            console.log('路線規劃完成:', res);
             routeResult.value = res;
             // 如果地圖上還沒有顯示路線，則顯示
             if (directionsRenderer && !directionsRenderer.getDirections()) {
@@ -1260,13 +1255,7 @@ const confirmRoute = async () => {
     });
   }
   
-  // 調試：檢查 routeResult 狀態
-  console.log('=== confirmRoute 調試 ===');
-  console.log('routeResult.value:', routeResult.value);
-  console.log('routeResult.value?.routes:', routeResult.value?.routes);
-  console.log('routeResult.value?.routes?.length:', routeResult.value?.routes?.length);
-  
-  // 將路線結果序列化並通過 query 參數傳遞（額外添加，不影響原有參數）
+  // 將路線結果序列化並通過 query 參數傳遞
   if (routeResult.value && routeResult.value.routes && routeResult.value.routes.length > 0) {
     // 只保存 routes 數據，因為這是用戶需要的
     const routesData = routeResult.value.routes.map(route => ({
@@ -1325,23 +1314,13 @@ const confirmRoute = async () => {
     
     // 將 routes 數據序列化並編碼，通過 query 參數傳遞
     const routesJson = JSON.stringify(routesData);
+    
     // 使用 encodeURIComponent 編碼，避免 URL 特殊字符問題
     queryParams.routes = encodeURIComponent(routesJson);
     
-    console.log('路線數據已準備通過 query 參數傳遞，數據大小:', routesJson.length, '字符');
-    console.log('queryParams.routes 是否存在:', 'routes' in queryParams);
-    
     // 同時也保存到 sessionStorage 作為備份（如果 URL 太長可以從這裡讀取）
     sessionStorage.setItem('routeData', routesJson);
-  } else {
-    console.warn('⚠️ 路線數據不存在，無法傳遞 routes 參數');
-    console.warn('routeResult.value:', routeResult.value);
-    console.warn('routeResult.value?.routes:', routeResult.value?.routes);
   }
-  
-  // 調試：檢查最終的 queryParams
-  console.log('最終 queryParams:', queryParams);
-  console.log('queryParams 的 keys:', Object.keys(queryParams));
   
   // 跳轉到分析載入頁面
   router.push({

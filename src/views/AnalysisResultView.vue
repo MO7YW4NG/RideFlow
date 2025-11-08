@@ -27,6 +27,7 @@ const originNo = computed(() => (route.query.originNo as string) || '');
 const destLat = computed(() => parseFloat((route.query.destLat as string) || '0'));
 const destLng = computed(() => parseFloat((route.query.destLng as string) || '0'));
 const destNo = computed(() => (route.query.destNo as string) || '');
+const routesParam = computed(() => (route.query.routes as string) || '');
 
 // 天氣與環境資料
 const weatherData = ref({
@@ -107,7 +108,6 @@ const replanRoute = () => {
 // 開始騎乘
 const startRide = () => {
   // TODO: 實現開始騎乘邏輯
-  console.log('開始騎乘');
 };
 
 // 起始站選單資料（不包含當前選中的站點）
@@ -219,18 +219,14 @@ const selectDestinationStation = (event: Event) => {
 // 從路由 state 或 sessionStorage 讀取分析結果數據
 const loadAnalysisData = () => {
   try {
-    console.log('=== 開始讀取分析結果數據 ===');
-    
     let data = null;
     
     // 優先從路由 state 讀取數據（更可靠）
     const routeState = history.state;
     if (routeState && routeState.analysisResultData) {
-      console.log('從路由 state 讀取數據');
       data = routeState.analysisResultData;
     } else {
       // 如果路由 state 沒有數據，從 sessionStorage 讀取
-      console.log('從 sessionStorage 讀取數據');
       const storedData = sessionStorage.getItem('analysisResultData');
       const timestamp = sessionStorage.getItem('analysisResultDataTimestamp');
       
@@ -254,14 +250,9 @@ const loadAnalysisData = () => {
       
       data = JSON.parse(storedData);
     }
-    console.log('讀取的數據:', data);
-    console.log('數據類型:', typeof data);
-    console.log('數據 keys:', Object.keys(data || {}));
     
     // 更新天氣與環境資料
     if (data && data.weather_block) {
-      console.log('更新天氣資料:', data.weather_block);
-      console.log('temperature:', data.weather_block.temperature, '類型:', typeof data.weather_block.temperature);
       weatherData.value = {
         temperature: parseFloat(data.weather_block.temperature) || 24,
         precipitation: parseFloat(data.weather_block.rain_probability) || 10,
@@ -269,62 +260,40 @@ const loadAnalysisData = () => {
         uvi: data.weather_block.uvi === '-' ? 3 : parseFloat(data.weather_block.uvi) || 3,
         isSunny: data.weather_block.condition_label === '晴'
       };
-      console.log('更新後的 weatherData:', weatherData.value);
-    } else {
-      console.log('沒有 weather_block 數據, data:', data);
     }
     
     // 更新起始站資料
     if (data && data.origin_station_block) {
-      console.log('更新起始站資料:', data.origin_station_block);
-      console.log('available_bikes:', data.origin_station_block.available_bikes, '類型:', typeof data.origin_station_block.available_bikes);
       originStation.value.name = data.origin_station_block.station_name || originStation.value.name;
       // available_bikes 寫入「目前可租借數量」
       const bikes = Number(data.origin_station_block.available_bikes);
       originStation.value.availableBikes = isNaN(bikes) ? 0 : bikes;
-      console.log('更新後的 originStation:', originStation.value);
-    } else {
-      console.log('沒有 origin_station_block 數據, data:', data);
     }
     
     // 更新終點站資料
     if (data && data.destination_station_block) {
-      console.log('更新終點站資料:', data.destination_station_block);
-      console.log('available_slots:', data.destination_station_block.available_slots, '類型:', typeof data.destination_station_block.available_slots);
       destinationStation.value.name = data.destination_station_block.station_name || destinationStation.value.name;
       // available_slots 寫入「目前空位數量」
       const slots = Number(data.destination_station_block.available_slots);
       destinationStation.value.availableSpaces = isNaN(slots) ? 0 : slots;
-      console.log('更新後的 destinationStation:', destinationStation.value);
-    } else {
-      console.log('沒有 destination_station_block 數據, data:', data);
     }
     
     // 更新推薦標籤
     if (data && data.label_block && data.label_block.labels) {
-      console.log('更新推薦標籤:', data.label_block.labels);
       recommendationTags.value = data.label_block.labels.map((label: any) => ({
         content: label.content,
         level: label.level
       }));
-      console.log('更新後的 recommendationTags:', recommendationTags.value);
-    } else {
-      console.log('沒有 label_block 數據, data:', data);
     }
     
     // 檢查是否有天氣特報
-    if (data.weather_block && 
+    if (data && data.weather_block && 
         data.weather_block.phenomena && 
         data.weather_block.phenomena !== '-' &&
         data.weather_block.start_time &&
         data.weather_block.start_time !== '-' &&
         data.weather_block.end_time &&
         data.weather_block.end_time !== '-') {
-      console.log('檢測到天氣特報:', {
-        phenomena: data.weather_block.phenomena,
-        start_time: data.weather_block.start_time,
-        end_time: data.weather_block.end_time
-      });
       weatherAlert.value = {
         title: data.weather_block.phenomena,
         location: '臺北市', // 可以從後端獲取或使用當前位置
@@ -332,46 +301,73 @@ const loadAnalysisData = () => {
         endTime: data.weather_block.end_time
       };
       showWeatherAlert.value = true;
-      console.log('天氣特報已設置:', weatherAlert.value);
-    } else {
-      console.log('沒有天氣特報');
     }
-    
-    console.log('=== 數據讀取完成 ===');
     
     // 讀取完成後清除 sessionStorage（延遲清除，確保數據已正確加載）
     setTimeout(() => {
       sessionStorage.removeItem('analysisResultData');
       sessionStorage.removeItem('analysisResultDataTimestamp');
-      console.log('已清除 sessionStorage 中的分析結果數據');
     }, 1000);
   } catch (error) {
-    console.error('=== 讀取分析結果數據失敗 ===');
-    console.error('錯誤訊息:', error instanceof Error ? error.message : String(error));
-    console.error('錯誤詳情:', error);
+    console.error('讀取分析結果數據失敗:', error instanceof Error ? error.message : String(error));
   }
 };
 
 onMounted(() => {
-  console.log('=== AnalysisResultView onMounted ===');
-  console.log('路由參數:', route.query);
-  
   // 從路由參數更新起始站資料（作為預設值）
   if (originName.value) {
     originStation.value.name = originName.value;
-    console.log('設置起始站名稱:', originName.value);
   }
   
   // 從路由參數更新終點站資料（作為預設值）
   if (destinationName.value) {
     destinationStation.value.name = destinationName.value;
-    console.log('設置終點站名稱:', destinationName.value);
+  }
+  
+  // 讀取並保存 routes 參數
+  if (routesParam.value) {
+    try {
+      // 如果 query 參數中有 routes，解碼並保存到 sessionStorage 作為備份
+      const decodedRoutes = decodeURIComponent(routesParam.value);
+      const routesData = JSON.parse(decodedRoutes);
+      console.log('=== AnalysisResultView 獲取到的 routes 數據 ===');
+      console.log('routesParam.value (原始):', routesParam.value.substring(0, 100) + '...');
+      console.log('decodedRoutes (解碼後):', decodedRoutes.substring(0, 200) + '...');
+      console.log('routesData (解析後):', routesData);
+      console.log('routesData 類型:', Array.isArray(routesData) ? 'Array' : typeof routesData);
+      console.log('routesData.length:', Array.isArray(routesData) ? routesData.length : 'N/A');
+      if (Array.isArray(routesData) && routesData.length > 0) {
+        console.log('routesData[0]:', routesData[0]);
+        console.log('routesData[0].legs:', routesData[0].legs);
+        console.log('routesData[0].legs.length:', routesData[0].legs?.length);
+      }
+      sessionStorage.setItem('routeData', decodedRoutes);
+    } catch (error) {
+      console.error('保存 routes 參數失敗:', error);
+    }
+  } else {
+    // 如果 query 參數中沒有 routes，嘗試從 sessionStorage 讀取
+    const sessionRoutes = sessionStorage.getItem('routeData');
+    if (sessionRoutes) {
+      try {
+        const routesData = JSON.parse(sessionRoutes);
+        console.log('=== AnalysisResultView 從 sessionStorage 獲取到的 routes 數據 ===');
+        console.log('routesData:', routesData);
+        console.log('routesData 類型:', Array.isArray(routesData) ? 'Array' : typeof routesData);
+        console.log('routesData.length:', Array.isArray(routesData) ? routesData.length : 'N/A');
+        if (Array.isArray(routesData) && routesData.length > 0) {
+          console.log('routesData[0]:', routesData[0]);
+        }
+      } catch (error) {
+        console.error('從 sessionStorage 解析 routes 失敗:', error);
+      }
+    } else {
+      console.warn('⚠️ AnalysisResultView: 沒有找到 routes 數據（query 參數和 sessionStorage 都沒有）');
+    }
   }
   
   // 從 sessionStorage 讀取分析結果數據
-  console.log('準備調用 loadAnalysisData...');
   loadAnalysisData();
-  console.log('loadAnalysisData 完成');
 });
 </script>
 

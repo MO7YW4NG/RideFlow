@@ -106,6 +106,8 @@ let markers: google.maps.Marker[] = [];
 let markerCluster: any = null;
 let directionsService: google.maps.DirectionsService | null = null;
 let directionsRenderer: google.maps.DirectionsRenderer | null = null;
+// 存儲路線規劃結果
+const routeResult = ref<google.maps.DirectionsResult | null>(null);
 
 // 起點/目的地輸入與資料
 const originInput = ref('');
@@ -837,6 +839,8 @@ const tryRoute = () => {
       if (status === 'OK' && res) {
         console.log('res:', res);
         directionsRenderer!.setDirections(res);
+        // 保存路線結果，供後續傳遞到 loading 頁面
+        routeResult.value = res;
         // 加入歷史站點（Ordered Set）
         if (originPlace.value) {
           tripStore.addHistory({ place: originPlace.value });
@@ -844,6 +848,9 @@ const tryRoute = () => {
         if (destinationPlace.value) {
           tripStore.addHistory({ place: destinationPlace.value });
         }
+      } else {
+        // 如果路線規劃失敗，清除保存的路線結果
+        routeResult.value = null;
       }
     }
   );
@@ -1196,19 +1203,90 @@ const onSwitchOriginDestination = () => {
 
 // 確定行程，開始分析
 const confirmRoute = () => {
+  // 準備 query 參數（包含所有原有的參數）
+  const queryParams: Record<string, string> = {
+    origin: originPlace.value?.name || '',
+    destination: destinationPlace.value?.name || '',
+    originLat: originPlace.value?.lat?.toString() || '',
+    originLng: originPlace.value?.lng?.toString() || '',
+    originNo: originPlace.value?.id || '',
+    destLat: destinationPlace.value?.lat?.toString() || '',
+    destLng: destinationPlace.value?.lng?.toString() || '',
+    destNo: destinationPlace.value?.id || ''
+  };
+  
+  // 將路線結果序列化並通過 query 參數傳遞（額外添加，不影響原有參數）
+  if (routeResult.value && routeResult.value.routes) {
+    // 只保存 routes 數據，因為這是用戶需要的
+    const routesData = routeResult.value.routes.map(route => ({
+      bounds: route.bounds ? {
+        north: route.bounds.getNorthEast().lat(),
+        south: route.bounds.getSouthWest().lat(),
+        east: route.bounds.getNorthEast().lng(),
+        west: route.bounds.getSouthWest().lng()
+      } : null,
+      copyrights: route.copyrights,
+      legs: route.legs.map(leg => ({
+        distance: {
+          text: leg.distance?.text || '',
+          value: leg.distance?.value || 0
+        },
+        duration: {
+          text: leg.duration?.text || '',
+          value: leg.duration?.value || 0
+        },
+        end_address: leg.end_address || '',
+        end_location: {
+          lat: leg.end_location?.lat() || 0,
+          lng: leg.end_location?.lng() || 0
+        },
+        start_address: leg.start_address || '',
+        start_location: {
+          lat: leg.start_location?.lat() || 0,
+          lng: leg.start_location?.lng() || 0
+        },
+        steps: leg.steps.map(step => ({
+          distance: {
+            text: step.distance?.text || '',
+            value: step.distance?.value || 0
+          },
+          duration: {
+            text: step.duration?.text || '',
+            value: step.duration?.value || 0
+          },
+          end_location: {
+            lat: step.end_location?.lat() || 0,
+            lng: step.end_location?.lng() || 0
+          },
+          instructions: step.instructions || '',
+          path: step.path?.map(p => ({ lat: p.lat(), lng: p.lng() })) || [],
+          start_location: {
+            lat: step.start_location?.lat() || 0,
+            lng: step.start_location?.lng() || 0
+          },
+          travel_mode: step.travel_mode || ''
+        }))
+      })),
+      overview_polyline: (route.overview_polyline as any)?.points || '',
+      summary: route.summary || '',
+      warnings: route.warnings || []
+    }));
+    
+    // 將 routes 數據序列化並編碼，通過 query 參數傳遞
+    const routesJson = JSON.stringify(routesData);
+    // 使用 encodeURIComponent 編碼，避免 URL 特殊字符問題
+    queryParams.routes = encodeURIComponent(routesJson);
+    
+    console.log('路線數據已準備通過 query 參數傳遞，數據大小:', routesJson.length, '字符');
+    
+    // 同時也保存到 sessionStorage 作為備份（如果 URL 太長可以從這裡讀取）
+    sessionStorage.setItem('routeData', routesJson);
+  }
+  
   // 跳轉到分析載入頁面
   router.push({
     name: 'analysis-loading',
-    query: {
-      origin: originPlace.value?.name || '',
-      destination: destinationPlace.value?.name || '',
-      originLat: originPlace.value?.lat?.toString() || '',
-      originLng: originPlace.value?.lng?.toString() || '',
-      originNo: originPlace.value?.id || '',
-      destLat: destinationPlace.value?.lat?.toString() || '',
-      destLng: destinationPlace.value?.lng?.toString() || '',
-      destNo: destinationPlace.value?.id || ''
-    }
+    query: queryParams
   });
 };
 

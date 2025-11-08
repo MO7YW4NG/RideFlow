@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AqiUviInfoDialog from '@/components/ui/AqiUviInfoDialog.vue';
 import WeatherAlertDialog from '@/components/ui/WeatherAlertDialog.vue';
@@ -421,6 +421,9 @@ const loadAnalysisData = () => {
     }
     
     // 檢查是否有天氣特報
+    // 先重置狀態，避免重複觸發
+    showWeatherAlert.value = false;
+    
     if (data && data.weather_block && 
         data.weather_block.phenomena && 
         data.weather_block.phenomena !== '-' &&
@@ -428,13 +431,24 @@ const loadAnalysisData = () => {
         data.weather_block.start_time !== '-' &&
         data.weather_block.end_time &&
         data.weather_block.end_time !== '-') {
+      // 先設置完整的 weatherAlert 數據
       weatherAlert.value = {
         title: data.weather_block.phenomena,
         location: '臺北市', // 可以從後端獲取或使用當前位置
         startTime: data.weather_block.start_time,
         endTime: data.weather_block.end_time
       };
-      showWeatherAlert.value = true;
+      // 確保 weatherAlert 數據設置完成後，再在下一個 tick 顯示彈窗
+      // 這樣可以避免彈窗在數據未完全準備好時就顯示
+      nextTick(() => {
+        // 再次確認 weatherAlert 有值，避免顯示空彈窗
+        if (weatherAlert.value) {
+          showWeatherAlert.value = true;
+        }
+      });
+    } else {
+      // 如果沒有天氣特報，確保清除舊數據
+      weatherAlert.value = null;
     }
     
     // 不再清除 localStorage，保持數據持久化
@@ -528,7 +542,7 @@ onMounted(() => {
           <div class="flex flex-col gap-1 flex-1">
             <div class="text-2xl font-bold text-grey-900">{{ weatherData.temperature }} °C</div>
             <div class="flex items-center justify-between gap-2 text-sm text-grey-600">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5">
                 <span class="flex items-center gap-1">
                     <img :src="resultRain" alt="降雨" class="w-4 h-4" />
                     {{ weatherData.precipitation }}%
@@ -571,16 +585,16 @@ onMounted(() => {
 
     <!-- 推薦部分 -->
     <div class="flex item-center justify-center py-3 mx-4 mt-4">
-      <div class="flex-1 px-2">
+      <div class="flex-1 flex flex-col justify-start px-2 pl-5 gap-3">
         <div class="flex py-2 items-center">
             <div class="text-2xl font-extrabold mb-2" :class="suitabilityTextColor">{{ suitability}}</div>
             <div class="text-2xl font-extrabold text-[gray-900] mb-2">騎乘</div>
         </div>
-        <div class="flex flex-col gap-2 items-start px-2">
+        <div class="flex flex-col gap-2 justify-start items-start">
             <span
             v-for="tag in recommendationTags"
             :key="tag.content"
-            class="px-5 py-2 rounded-lg text-sm font-medium"
+            class="px-4 py-2 rounded-lg text-sm font-medium"
             :class="
                 tag.level === 'good'
                 ? 'bg-[#E8F5E9] text-[#76A732]'
@@ -609,15 +623,15 @@ onMounted(() => {
       <div class="relative flex items-start gap-3 mb-4">
         <!-- 起始站圖標（自行車） -->
         <div
-          class="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0 z-0 relative"
+          class="w-12 h-12 rounded-full bg-primary-400 flex items-center justify-center flex-shrink-0 z-0 relative"
         >
           <img :src="iconResultBike" alt="起始站" class="w-6 h-6" />
         </div>
-        <div class="flex-1 bg-white rounded-xl shadow-card p-4">
+        <div class="flex-1 bg-white rounded-xl shadow-card px-4 py-3">
           <div class="flex items-center justify-between">
             <div>
-                <div class="text-xs text-grey-300 text-bold mb-1">起始站</div>
-                <div class="text-base font-extrabold text-grey-900 mb-3">
+                <div class="text-sm text-grey-300 text-extrabold">起始站</div>
+                <div class="text-base font-extrabold text-grey-900">
                     {{ originStation.name }}
                 </div>
             </div>
@@ -660,8 +674,8 @@ onMounted(() => {
             </div>
           </div>
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="text-xs text-grey-600">目前可租借數量</div>
+            <div class="flex items-center gap-1.5">
+              <div class="text-sm text-grey-600">目前可租借數量</div>
               <div 
                 class="text-2xl font-extrabold"
                 :class="originStation.availableBikes <= 3 ? 'text-secondary-500' : 'text-primary-500'"
@@ -676,15 +690,15 @@ onMounted(() => {
 
       <!-- 路線詳情卡片 -->
       <div class="relative ml-15 mb-4 bg-primary-100 rounded-xl p-3">
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-2.5">
           <!-- 預估時間 -->
           <div class="flex items-center gap-2">
             <img :src="resultTime" alt="time" class="w-6 h-6">
             <div class="flex flex-col items-start">
-              <span class="text-xs text-grey-600">預估時間</span>
+              <span class="text-sm text-grey-300">預估時間</span>
               <div class="text-xl font-extrabold">
-                <span class="text-primary-500">{{ routeDetails.estimatedTime }}</span>
-                <span class="text-grey-900"> 分鐘</span>
+                <span class="text-base text-primary-500">{{ routeDetails.estimatedTime }}</span>
+                <span class="text-base text-grey-900"> 分鐘</span>
               </div>
             </div>
           </div>
@@ -694,11 +708,11 @@ onMounted(() => {
            <img :src="resultCarbon" alt="carbon" class="w-6 h-6">
             <div class="flex flex-col items-start">
               <div class="flex items-center gap-1">
-                <span class="text-xs text-grey-600">減碳量</span>
+                <span class="text-sm text-grey-300">減碳量</span>
               </div>
               <div class="flex items-center gap-1 text-xl font-extrabold">
-                <span class="text-primary-500">{{ routeDetails.carbonReduction * 1000 }}</span>
-                <span class="text-grey-900 whitespace-nowrap">公克</span>
+                <span class="text-base text-primary-500">{{ routeDetails.carbonReduction * 1000 }}</span>
+                <span class="text-base text-grey-900 whitespace-nowrap">公克</span>
                 <button 
                   @click="openCarbonReductionDialog"
                   class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300 hover:text-grey-500 transition-colors cursor-pointer"
@@ -717,10 +731,10 @@ onMounted(() => {
           <div class="flex items-center gap-2">
            <img :src="resultHeat" alt="heat" class="w-6 h-6">
             <div class="flex flex-col items-start">
-              <span class="text-xs text-grey-600">消耗熱量</span>
+              <span class="text-sm text-grey-300">消耗熱量</span>
               <div class="flex items-center text-xl font-extrabold gap-1 whitespace-nowrap">
-                <span class="text-primary-500">{{ routeDetails.caloriesBurned }}</span>
-                <span class="text-grey-900"> 大卡</span>
+                <span class="text-base text-primary-500">{{ routeDetails.caloriesBurned }}</span>
+                <span class="text-base text-grey-900"> 大卡</span>
                 <button 
                   @click="openCalorieDialog"
                   class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300 hover:text-grey-500 transition-colors cursor-pointer"
@@ -740,11 +754,11 @@ onMounted(() => {
             <img :src="resultConstruction" alt="construction" class="w-6 h-6">
             <div class="flex flex-col items-start">
               <div class="flex items-center gap-1">
-                <span class="text-xs text-grey-600">道路施工</span>         
+                <span class="text-sm text-grey-300">道路施工</span>         
               </div>
               <div class="flex items-center gap-1 text-xl font-extrabold">
-                <span class="text-primary-500">{{ routeDetails.roadConstruction }}</span>
-                <span class="text-grey-900 whitespace-nowrap"> 件</span>
+                <span class="text-base text-primary-500">{{ routeDetails.roadConstruction }}</span>
+                <span class="text-base text-grey-900 whitespace-nowrap"> 件</span>
                 <button
                   @click="goToRoadConstruction"
                   class="w-4 h-4 rounded-full flex items-center justify-center text-grey-300 hover:text-grey-500 transition-colors cursor-pointer"
@@ -789,15 +803,15 @@ onMounted(() => {
       <div class="relative flex items-start gap-3 mb-2">
         <!-- 終點站圖標（目的地） -->
         <div
-          class="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0 z-0 relative"
+          class="w-12 h-12 rounded-full bg-primary-400 flex items-center justify-center flex-shrink-0 z-0 relative"
         >
           <img :src="iconResultDest" alt="終點站" class="w-6 h-6" />
         </div>
-        <div class="flex-1 bg-white rounded-xl shadow-card p-4">
+        <div class="flex-1 bg-white rounded-xl shadow-card px-4 py-3">
           <div class="flex items-center justify-between">
             <div>
-                <div class="text-xs text-grey-300 text-bold mb-1">終點站</div>
-                <div class="text-base font-extrabold text-grey-900 mb-3">
+                <div class="text-sm text-grey-300 text-extrabold">終點站</div>
+                <div class="text-base font-extrabold text-grey-900">
                     {{ destinationStation.name }}
                 </div>
             </div>
@@ -840,8 +854,8 @@ onMounted(() => {
             </div>
           </div>
           <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-              <div class="text-xs text-grey-600">目前空位數量</div>
+            <div class="flex items-center gap-1.5">
+              <div class="text-sm text-grey-600">目前空位數量</div>
               <div 
                 class="text-2xl font-extrabold"
                 :class="destinationStation.availableSpaces <= 3 ? 'text-secondary-500' : 'text-primary-500'"

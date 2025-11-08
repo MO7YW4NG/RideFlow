@@ -167,7 +167,8 @@ const handleAnalysisComplete = () => {
   setTimeout(() => {
     isLoading.value = false;
     
-    // 構建 query 參數
+    // 構建 query 參數（不包含 routes，避免 URL 過長導致 431 錯誤）
+    // routes 數據已經保存在 localStorage 中，AnalysisResultView 會從那裡讀取
     const queryParams: Record<string, string> = {
       origin: origin || '',
       destination: destination || '',
@@ -180,10 +181,10 @@ const handleAnalysisComplete = () => {
       gender: gender
     };
     
-    // 如果有 routes 參數，也傳遞過去
-    if (routesParam) {
-      queryParams.routes = routesParam;
-    }
+    // 不再將 routes 參數放在 URL 中，因為：
+    // 1. routes 數據已經保存在 localStorage 中（在 SurroundingServiceView 和這裡都有保存）
+    // 2. AnalysisResultView 會優先從 localStorage 讀取 routes 數據
+    // 3. 避免 URL 過長導致 HTTP 431 錯誤（Request Header Fields Too Large）
     
     router.replace({
       name: 'analysis-result',

@@ -23,8 +23,8 @@ const closeDialog = () => {
 </script>
 
 <template>
-  <TransitionRoot appear :show="isOpen && alert !== null" as="template">
-    <Dialog as="div" :open="isOpen && alert !== null" @close="closeDialog" class="relative z-[9999]">
+  <TransitionRoot v-if="isOpen && alert !== null" :show="true" as="template">
+    <Dialog as="div" :open="true" @close="closeDialog" class="relative z-[9999]">
       <div
         class="fixed inset-0 bg-black/25"
         @click.self="closeDialog"

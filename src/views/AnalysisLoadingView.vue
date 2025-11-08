@@ -61,24 +61,24 @@ const fetchAnalysisData = async () => {
         const decodedRoutes = decodeURIComponent(routesParam);
         routesData = JSON.parse(decodedRoutes);
       } catch (error) {
-        // 如果 query 參數解析失敗，嘗試從 sessionStorage 讀取
-        const sessionRoutes = sessionStorage.getItem('routeData');
-        if (sessionRoutes) {
+        // 如果 query 參數解析失敗，嘗試從 localStorage 讀取
+        const storedRoutes = localStorage.getItem('routeData');
+        if (storedRoutes) {
           try {
-            routesData = JSON.parse(sessionRoutes);
+            routesData = JSON.parse(storedRoutes);
           } catch (e) {
-            console.error('從 sessionStorage 解析 routes 失敗:', e);
+            console.error('從 localStorage 解析 routes 失敗:', e);
           }
         }
       }
     } else {
-      // 如果 query 參數中沒有 routes，嘗試從 sessionStorage 讀取
-      const sessionRoutes = sessionStorage.getItem('routeData');
-      if (sessionRoutes) {
+      // 如果 query 參數中沒有 routes，嘗試從 localStorage 讀取
+      const storedRoutes = localStorage.getItem('routeData');
+      if (storedRoutes) {
         try {
-          routesData = JSON.parse(sessionRoutes);
+          routesData = JSON.parse(storedRoutes);
         } catch (e) {
-          console.error('從 sessionStorage 解析 routes 失敗:', e);
+          console.error('從 localStorage 解析 routes 失敗:', e);
         }
       }
     }
@@ -114,10 +114,17 @@ const fetchAnalysisData = async () => {
     const data = response.data;
     apiData.value = data;
     
-    // 將數據存儲到 sessionStorage 作為備份，供 AnalysisResultView 使用
-    sessionStorage.setItem('analysisResultData', JSON.stringify(data));
-    // 同時存儲時間戳，用於驗證數據有效性
-    sessionStorage.setItem('analysisResultDataTimestamp', Date.now().toString());
+    // 將數據存儲到 localStorage，持久化保存最後一次分析結果
+    // 下次分析時會自動覆蓋舊數據
+    try {
+      localStorage.setItem('analysisResultData', JSON.stringify(data));
+      localStorage.setItem('analysisResultDataTimestamp', Date.now().toString());
+    } catch (error) {
+      console.error('保存分析結果到 localStorage 失敗:', error);
+      // 如果 localStorage 存儲失敗（可能是存儲空間不足），回退到 sessionStorage
+      sessionStorage.setItem('analysisResultData', JSON.stringify(data));
+      sessionStorage.setItem('analysisResultDataTimestamp', Date.now().toString());
+    }
     
     // API 返回後，將最後一步的 async 設為 false，觸發完成
     // 使用 nextTick 確保響應式更新能夠正確觸發

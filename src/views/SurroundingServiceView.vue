@@ -1333,8 +1333,14 @@ const confirmRoute = async () => {
     // 使用 encodeURIComponent 編碼，避免 URL 特殊字符問題
     queryParams.routes = encodeURIComponent(routesJson);
     
-    // 同時也保存到 sessionStorage 作為備份（如果 URL 太長可以從這裡讀取）
-    sessionStorage.setItem('routeData', routesJson);
+    // 同時也保存到 localStorage 持久化存儲（如果 URL 太長可以從這裡讀取）
+    try {
+      localStorage.setItem('routeData', routesJson);
+    } catch (error) {
+      console.error('保存 routes 到 localStorage 失敗:', error);
+      // 回退到 sessionStorage
+      sessionStorage.setItem('routeData', routesJson);
+    }
   }
   
   // 跳轉到分析載入頁面

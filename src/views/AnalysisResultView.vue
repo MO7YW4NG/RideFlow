@@ -154,9 +154,26 @@ const goToRoadConstruction = () => {
   window.location.href = constructionMapUrl;
 };
 
-// 開始騎乘
+// 開始騎乘 - 跳轉到 Google Maps 路線規劃
 const startRide = () => {
-  // TODO: 實現開始騎乘邏輯
+  // 獲取起點和終點站名
+  const origin = originStation.value.name || '';
+  const destination = destinationStation.value.name || '';
+  
+  // 如果沒有站名，無法跳轉
+  if (!origin || !destination) {
+    console.warn('缺少起點或終點站名，無法開啟 Google Maps');
+    return;
+  }
+  
+  // 構建 Google Maps 路線規劃 URL
+  // 使用 encodeURIComponent 對站名進行編碼，確保 URL 正確
+  const originEncoded = encodeURIComponent(origin);
+  const destinationEncoded = encodeURIComponent(destination);
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originEncoded}&destination=${destinationEncoded}&travelmode=bicycling`;
+  
+  // 在新標籤頁中打開 Google Maps
+  window.open(googleMapsUrl, '_blank');
 };
 
 // 根據適合度返回文字顏色
@@ -291,36 +308,34 @@ const selectDestinationStation = (event: Event) => {
   }
 };
 
-// 從路由 state 或 sessionStorage 讀取分析結果數據
+// 從路由 state 或 localStorage 讀取分析結果數據
 const loadAnalysisData = () => {
   try {
     let data = null;
     
-    // 優先從路由 state 讀取數據（更可靠）
+    // 優先從路由 state 讀取數據（更可靠，用於新分析）
     const routeState = history.state;
     if (routeState && routeState.analysisResultData) {
       data = routeState.analysisResultData;
+      // 如果從路由 state 讀取到數據，同時保存到 localStorage（更新最後一次結果）
+      try {
+        localStorage.setItem('analysisResultData', JSON.stringify(data));
+        localStorage.setItem('analysisResultDataTimestamp', Date.now().toString());
+      } catch (error) {
+        console.error('保存分析結果到 localStorage 失敗:', error);
+      }
     } else {
-      // 如果路由 state 沒有數據，從 sessionStorage 讀取
-      const storedData = sessionStorage.getItem('analysisResultData');
-      const timestamp = sessionStorage.getItem('analysisResultDataTimestamp');
+      // 如果路由 state 沒有數據，從 localStorage 讀取（持久化存儲）
+      let storedData = localStorage.getItem('analysisResultData');
+      
+      // 如果 localStorage 沒有，嘗試從 sessionStorage 讀取（向後兼容）
+      if (!storedData) {
+        storedData = sessionStorage.getItem('analysisResultData');
+      }
       
       if (!storedData) {
         console.warn('沒有找到存儲的分析結果數據');
         return;
-      }
-      
-      // 檢查數據是否過期（超過 5 分鐘）
-      if (timestamp) {
-        const timestampNum = parseInt(timestamp, 10);
-        const now = Date.now();
-        const fiveMinutes = 5 * 60 * 1000;
-        if (now - timestampNum > fiveMinutes) {
-          console.warn('存儲的數據已過期，清除舊數據');
-          sessionStorage.removeItem('analysisResultData');
-          sessionStorage.removeItem('analysisResultDataTimestamp');
-          return;
-        }
       }
       
       data = JSON.parse(storedData);
@@ -422,11 +437,8 @@ const loadAnalysisData = () => {
       showWeatherAlert.value = true;
     }
     
-    // 讀取完成後清除 sessionStorage（延遲清除，確保數據已正確加載）
-    setTimeout(() => {
-      sessionStorage.removeItem('analysisResultData');
-      sessionStorage.removeItem('analysisResultDataTimestamp');
-    }, 1000);
+    // 不再清除 localStorage，保持數據持久化
+    // 下次分析時會自動覆蓋舊數據
   } catch (error) {
     console.error('讀取分析結果數據失敗:', error instanceof Error ? error.message : String(error));
   }
@@ -446,7 +458,7 @@ onMounted(() => {
   // 讀取並保存 routes 參數
   if (routesParam.value) {
     try {
-      // 如果 query 參數中有 routes，解碼並保存到 sessionStorage 作為備份
+      // 如果 query 參數中有 routes，解碼並保存到 localStorage 持久化
       const decodedRoutes = decodeURIComponent(routesParam.value);
       const parsedRoutes = JSON.parse(decodedRoutes);
       routesData.value = parsedRoutes;
@@ -461,18 +473,29 @@ onMounted(() => {
         console.log('routesData[0].legs:', routesData.value[0].legs);
         console.log('routesData[0].legs.length:', routesData.value[0].legs?.length);
       }
-      sessionStorage.setItem('routeData', decodedRoutes);
+      // 保存到 localStorage，持久化存儲
+      try {
+        localStorage.setItem('routeData', decodedRoutes);
+      } catch (error) {
+        console.error('保存 routes 到 localStorage 失敗:', error);
+        // 回退到 sessionStorage
+        sessionStorage.setItem('routeData', decodedRoutes);
+      }
     } catch (error) {
       console.error('保存 routes 參數失敗:', error);
     }
   } else {
-    // 如果 query 參數中沒有 routes，嘗試從 sessionStorage 讀取
-    const sessionRoutes = sessionStorage.getItem('routeData');
-    if (sessionRoutes) {
+    // 如果 query 參數中沒有 routes，嘗試從 localStorage 讀取
+    let storedRoutes = localStorage.getItem('routeData');
+    // 如果 localStorage 沒有，嘗試從 sessionStorage 讀取（向後兼容）
+    if (!storedRoutes) {
+      storedRoutes = sessionStorage.getItem('routeData');
+    }
+    if (storedRoutes) {
       try {
-        const parsedRoutes = JSON.parse(sessionRoutes);
+        const parsedRoutes = JSON.parse(storedRoutes);
         routesData.value = parsedRoutes;
-        console.log('=== AnalysisResultView 從 sessionStorage 獲取到的 routes 數據 ===');
+        console.log('=== AnalysisResultView 從存儲獲取到的 routes 數據 ===');
         console.log('routesData:', routesData.value);
         console.log('routesData 類型:', Array.isArray(routesData.value) ? 'Array' : typeof routesData.value);
         console.log('routesData.length:', Array.isArray(routesData.value) ? routesData.value.length : 'N/A');
@@ -480,10 +503,10 @@ onMounted(() => {
           console.log('routesData[0]:', routesData.value[0]);
         }
       } catch (error) {
-        console.error('從 sessionStorage 解析 routes 失敗:', error);
+        console.error('從存儲解析 routes 失敗:', error);
       }
     } else {
-      console.warn('⚠️ AnalysisResultView: 沒有找到 routes 數據（query 參數和 sessionStorage 都沒有）');
+      console.warn('⚠️ AnalysisResultView: 沒有找到 routes 數據（query 參數和存儲都沒有）');
     }
   }
   
@@ -547,17 +570,17 @@ onMounted(() => {
     <WeatherAlertDialog v-model="showWeatherAlert" :alert="weatherAlert" />
 
     <!-- 推薦部分 -->
-    <div class="flex item-center justify-center py-5 mx-4 mt-4">
-      <div class="flex-1">
+    <div class="flex item-center justify-center py-3 mx-4 mt-4">
+      <div class="flex-1 px-2">
         <div class="flex py-2 items-center">
             <div class="text-2xl font-extrabold mb-2" :class="suitabilityTextColor">{{ suitability}}</div>
             <div class="text-2xl font-extrabold text-[gray-900] mb-2">騎乘</div>
         </div>
-        <div class="flex flex-col gap-2 items-start">
+        <div class="flex flex-col gap-2 items-start px-2">
             <span
             v-for="tag in recommendationTags"
             :key="tag.content"
-            class="px-8 py-2 rounded-lg text-sm font-medium"
+            class="px-5 py-2 rounded-lg text-sm font-medium"
             :class="
                 tag.level === 'good'
                 ? 'bg-[#E8F5E9] text-[#76A732]'

@@ -9,6 +9,7 @@ import axios from 'axios';
 import { onMounted, onUnmounted, ref, watch, nextTick, computed } from 'vue';
 import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock';
 import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer';
+import { youbikeFilter } from '@/utils/youbike-filter';
 import greenDotIconUrl from '/public/images/map/youbike/mappin-green.svg';
 import yellowDotIconUrl from '/public/images/map/youbike/mappin-yellow.svg';
 import redDotIconUrl from '/public/images/map/youbike/mappin-red.svg';
@@ -199,17 +200,17 @@ let isShowGeoError = ref(false);
 // 初始化載入 YouBike 資料
 const loadYouBikeData = async () => {
   try {
-    const response = await axios.get('/mock/youbike_mock_data.json');
+    // const response = await axios.get('/mock/youbike_mock_data.json');
+    const response = await axios.get(
+      'https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json',
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
     // 將資料轉換為 Spot 格式，確保 lat/lng 統一，並預處理站名 sna（保留第一個 "_" 之後的字串）
-    searchSpotList.value = (response.data as any[]).map((item) => ({
-      ...item,
-      sna:
-        typeof item.sna === 'string' && item.sna.includes('_')
-          ? item.sna.substring(item.sna.indexOf('_') + 1)
-          : item.sna,
-      lat: item.latitude ?? (typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat ?? 0),
-      lng: item.longitude ?? (typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng ?? 0)
-    }));
+    searchSpotList.value = youbikeFilter(response.data as any[]);
   } catch (error) {
     console.error('Failed to load YouBike data:', error);
   }
@@ -987,7 +988,6 @@ const onFavoriteItemClick = (f: SavedTrip) => {
 };
 
 const onSwitchOriginDestination = () => {
-  if (!originPlace.value || !destinationPlace.value) return;
   const temp = originPlace.value;
   originPlace.value = destinationPlace.value;
   destinationPlace.value = temp;

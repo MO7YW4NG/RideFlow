@@ -585,16 +585,16 @@ onMounted(() => {
 
     <!-- 推薦部分 -->
     <div class="flex item-center justify-center py-3 mx-4 mt-4">
-      <div class="flex-1 flex flex-col justify-start px-2 pl-5 gap-3">
-        <div class="flex py-2 items-center">
-            <div class="text-2xl font-extrabold mb-2" :class="suitabilityTextColor">{{ suitability}}</div>
-            <div class="text-2xl font-extrabold text-[gray-900] mb-2">騎乘</div>
+      <div class="flex-1 flex flex-col justify-center pl-8 gap-1">
+        <div class="flex pt-2 items-center whitespace-nowrap">
+            <div class="text-3xl font-extrabold mb-2 drop-shadow-[2px_2px_2px]" :class="suitabilityTextColor">{{suitability}}</div>
+            <div class="text-3xl font-extrabold text-[gray-900] mb-2 drop-shadow-[2px_2px_2px]">騎乘</div>
         </div>
         <div class="flex flex-col gap-2 justify-start items-start">
             <span
             v-for="tag in recommendationTags"
             :key="tag.content"
-            class="px-4 py-2 rounded-lg text-sm font-medium"
+            class="px-4 py-1 rounded-xl text-md font-medium"
             :class="
                 tag.level === 'good'
                 ? 'bg-[#d5e4c1] text-[#76A732]'
@@ -608,7 +608,7 @@ onMounted(() => {
         </div>
       </div>
     <!-- image -->
-      <img :src="mascotImage" alt="mascot" class="flex-1 w-1/2 max-w-[200px]">
+      <img :src="mascotImage" alt="mascot" class="flex-1 w-1/2 max-w-[240px] pr-6">
     </div>
 
     <!-- 路線信息區域 -->

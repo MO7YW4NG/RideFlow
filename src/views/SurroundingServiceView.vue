@@ -240,9 +240,9 @@ const setupStationsFromRoute = async () => {
   const destinationName = route.query.destination as string;
   const originNo = route.query.originNo as string;
   const destNo = route.query.destNo as string;
-  
+
   if (!originName && !destinationName) return;
-  
+
   // 如果只傳遞了一個站點，清除另一個站點和路線
   // 注意：如果兩個站點都有傳遞，則不清除任何站點
   if (originName && !destinationName) {
@@ -260,7 +260,7 @@ const setupStationsFromRoute = async () => {
       directionsRenderer.setDirections({ routes: [] } as any);
     }
   }
-  
+
   // 如果提供了站點名稱，從站點列表中查找
   if (originName) {
     // 優先使用站點編號查找，如果沒有編號則使用名稱查找
@@ -271,7 +271,7 @@ const setupStationsFromRoute = async () => {
     if (!originSpot) {
       originSpot = searchSpotList.value.find(spot => spot.sna === originName);
     }
-    
+
     if (originSpot) {
       const lat = typeof originSpot.lat === 'number' ? originSpot.lat : originSpot.latitude ?? 0;
       const lng = typeof originSpot.lng === 'number' ? originSpot.lng : originSpot.longitude ?? 0;
@@ -283,7 +283,7 @@ const setupStationsFromRoute = async () => {
         address: originSpot.ar
       };
       originInput.value = originSpot.sna;
-      
+
       // 將地圖中心移動到選中的起始站
       if (map && lat && lng) {
         map.setCenter({ lat, lng });
@@ -294,7 +294,7 @@ const setupStationsFromRoute = async () => {
       await searchAddressForPlace(originName, true);
     }
   }
-  
+
   if (destinationName) {
     // 優先使用站點編號查找，如果沒有編號則使用名稱查找
     let destSpot = null;
@@ -304,7 +304,7 @@ const setupStationsFromRoute = async () => {
     if (!destSpot) {
       destSpot = searchSpotList.value.find(spot => spot.sna === destinationName);
     }
-    
+
     if (destSpot) {
       const lat = typeof destSpot.lat === 'number' ? destSpot.lat : destSpot.latitude ?? 0;
       const lng = typeof destSpot.lng === 'number' ? destSpot.lng : destSpot.longitude ?? 0;
@@ -316,7 +316,7 @@ const setupStationsFromRoute = async () => {
         address: destSpot.ar
       };
       destinationInput.value = destSpot.sna;
-      
+
       // 將地圖中心移動到選中的終點站（如果起點未設定，或終點站是唯一設定的）
       if (map && lat && lng) {
         if (!originPlace.value) {
@@ -342,7 +342,7 @@ const setupStationsFromRoute = async () => {
       await searchAddressForPlace(destinationName, false);
     }
   }
-  
+
   // 如果起點和終點都已設定，嘗試規劃路線
   if (originPlace.value && destinationPlace.value) {
     nextTick(() => {
@@ -872,10 +872,10 @@ const tryRoute = () => {
     (res, status) => {
       if (status === 'OK' && res) {
         directionsRenderer!.setDirections(res);
-        
+
         // 保存路線結果，供後續傳遞到 loading 頁面
         routeResult.value = res;
-        
+
         // 加入歷史站點（Ordered Set）
         if (originPlace.value) {
           tripStore.addHistory({ place: originPlace.value });
@@ -963,46 +963,75 @@ const searchAddressForPlace = (address: string, isOrigin: boolean): Promise<void
   });
 };
 
+// 保存事件處理函數引用，以便可以移除
+let originBlurHandler: (() => void) | null = null;
+let originKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+let destinationBlurHandler: (() => void) | null = null;
+let destinationKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+
 // 設置地址搜尋事件監聽
 const setupAddressSearch = () => {
-  if (originInputEl.value) {
-    originInputEl.value.addEventListener('blur', () => {
+  // 先移除舊的事件監聽器（如果存在）
+  if (originInputEl.value && originBlurHandler) {
+    originInputEl.value.removeEventListener('blur', originBlurHandler);
+  }
+  if (originInputEl.value && originKeydownHandler) {
+    originInputEl.value.removeEventListener('keydown', originKeydownHandler);
+  }
+  if (destinationInputEl.value && destinationBlurHandler) {
+    destinationInputEl.value.removeEventListener('blur', destinationBlurHandler);
+  }
+  if (destinationInputEl.value && destinationKeydownHandler) {
+    destinationInputEl.value.removeEventListener('keydown', destinationKeydownHandler);
+  }
+
+  // 創建新的事件處理函數
+  originBlurHandler = () => {
+    if (originInput.value && originInput.value.trim() !== '') {
+      searchAddress(originInput.value);
+      originInputEl.value?.blur();
+      originInput.value = '';
+    }
+  };
+
+  originKeydownHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
       if (originInput.value && originInput.value.trim() !== '') {
         searchAddress(originInput.value);
         originInputEl.value?.blur();
         originInput.value = '';
       }
-    });
-    originInputEl.value.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (originInput.value && originInput.value.trim() !== '') {
-          searchAddress(originInput.value);
-          originInputEl.value?.blur();
-          originInput.value = '';
-        }
-      }
-    });
-  }
+    }
+  };
 
-  if (destinationInputEl.value) {
-    destinationInputEl.value.addEventListener('blur', () => {
+  destinationBlurHandler = () => {
+    if (destinationInput.value && destinationInput.value.trim() !== '') {
+      searchAddress(destinationInput.value);
+      destinationInputEl.value?.blur();
+      destinationInput.value = '';
+    }
+  };
+
+  destinationKeydownHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
       if (destinationInput.value && destinationInput.value.trim() !== '') {
         searchAddress(destinationInput.value);
         destinationInputEl.value?.blur();
         destinationInput.value = '';
       }
-    });
-    destinationInputEl.value.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (destinationInput.value && destinationInput.value.trim() !== '') {
-          searchAddress(destinationInput.value);
-          destinationInputEl.value?.blur();
-          destinationInput.value = '';
-        }
-      }
-    });
+    }
+  };
+
+  // 添加新的事件監聽器
+  if (originInputEl.value) {
+    originInputEl.value.addEventListener('blur', originBlurHandler);
+    originInputEl.value.addEventListener('keydown', originKeydownHandler);
+  }
+  if (destinationInputEl.value) {
+    destinationInputEl.value.addEventListener('blur', destinationBlurHandler);
+    destinationInputEl.value.addEventListener('keydown', destinationKeydownHandler);
   }
 };
 
@@ -1251,7 +1280,7 @@ const confirmRoute = async () => {
     destNo: destinationPlace.value?.id || '',
     gender: user.value?.idNo ? (user.value.idNo.substring(1, 2) === '1' ? 'M' : 'F') : 'M'
   };
-  
+
   // 如果路線結果不存在，先觸發路線規劃並等待完成
   if (!routeResult.value || !routeResult.value.routes || routeResult.value.routes.length === 0) {
     // 確保有起點和終點
@@ -1259,7 +1288,7 @@ const confirmRoute = async () => {
       console.error('起點或終點未設定，無法規劃路線');
       return;
     }
-    
+
     // 等待路線規劃完成
     await new Promise<void>((resolve) => {
       if (!directionsService) {
@@ -1267,7 +1296,7 @@ const confirmRoute = async () => {
         resolve();
         return;
       }
-      
+
       directionsService.route(
         {
           origin: { lat: Number(originPlace.value!.lat), lng: Number(originPlace.value!.lng) },
@@ -1293,7 +1322,7 @@ const confirmRoute = async () => {
       );
     });
   }
-  
+
   // 將路線結果序列化並通過 query 參數傳遞
   if (routeResult.value && routeResult.value.routes && routeResult.value.routes.length > 0) {
     // 只保存 routes 數據，因為這是用戶需要的
@@ -1350,13 +1379,13 @@ const confirmRoute = async () => {
       summary: route.summary || '',
       warnings: route.warnings || []
     }));
-    
+
     // 將 routes 數據序列化並編碼，通過 query 參數傳遞
     const routesJson = JSON.stringify(routesData);
-    
+
     // 使用 encodeURIComponent 編碼，避免 URL 特殊字符問題
     queryParams.routes = encodeURIComponent(routesJson);
-    
+
     // 同時也保存到 localStorage 持久化存儲（如果 URL 太長可以從這裡讀取）
     try {
       localStorage.setItem('routeData', routesJson);
@@ -1366,7 +1395,7 @@ const confirmRoute = async () => {
       sessionStorage.setItem('routeData', routesJson);
     }
   }
-  
+
   // 跳轉到分析載入頁面
   router.push({
     name: 'analysis-loading',
@@ -1390,6 +1419,10 @@ const replanRoute = () => {
   if (searchSpotList.value.length > 0) {
     updateMarkers();
   }
+  // 重新設置地址搜尋事件監聽（因為輸入框會被重新渲染）
+  nextTick(() => {
+    setupAddressSearch();
+  });
 };
 </script>
 
@@ -1399,28 +1432,17 @@ const replanRoute = () => {
       <!-- 地圖 -->
       <div class="relative flex-1 h-full overflow-y-hidden">
         <div class="google-map" id="map"></div>
-        <div
-          v-if="isMapReady"
-          class="gps"
-          @click="getPositionClick"
-          :style="{ bottom: sheetHeight + 10 + 'px', top: 'auto' }"
-        >
+        <div v-if="isMapReady" class="gps" @click="getPositionClick"
+          :style="{ bottom: sheetHeight + 10 + 'px', top: 'auto' }">
           <img src="@/assets/images/gps.webp" width="20" alt="" />
         </div>
 
         <!-- 底部面板：上車囉/今天去哪玩？、快捷、起迄輸入、歷史與常用 -->
-        <div
-          ref="sheetRef"
-          class="bg-white rounded-t-2xl w-full shadow-[0_-4px_10px_rgba(0,0,0,0.04)]"
-          :style="{ height: sheetHeight + 'px' }"
-        >
+        <div ref="sheetRef" class="bg-white rounded-t-2xl w-full shadow-[0_-4px_10px_rgba(0,0,0,0.04)]"
+          :style="{ height: sheetHeight + 'px' }">
           <!-- drag handle -->
-          <div
-            v-if="!isRouteReady"
-            class="w-full flex items-center justify-center py-2.5 cursor-grab select-none"
-            @mousedown="onHandleMouseDown"
-            @touchstart="onHandleTouchStart"
-          >
+          <div v-if="!isRouteReady" class="w-full flex items-center justify-center py-2.5 cursor-grab select-none"
+            @mousedown="onHandleMouseDown" @touchstart="onHandleTouchStart">
             <div class="w-8 h-1.5 bg-grey-300 rounded-full"></div>
           </div>
 
@@ -1428,10 +1450,8 @@ const replanRoute = () => {
           <template v-if="isRouteReady">
             <div class="px-4 py-4 flex flex-col gap-3">
               <!-- 確定行程, 開始分析 按鈕 -->
-              <button
-                @click="confirmRoute"
-                class="w-full flex items-center justify-center gap-2 bg-primary-100 text-primary-500 font-bold py-4 rounded-xl shadow-lg hover:opacity-90 transition-opacity"
-              >
+              <button @click="confirmRoute"
+                class="w-full flex items-center justify-center gap-2 bg-primary-100 text-primary-500 font-bold py-4 rounded-xl shadow-lg hover:opacity-90 transition-opacity">
                 <img src="@/assets/images/icon-run.svg" class="w-5 h-5" alt="" />
                 <span>確定行程, 開始分析</span>
               </button>
@@ -1450,12 +1470,9 @@ const replanRoute = () => {
 
             <!-- 快捷按鈕（從 store 取） -->
             <div class="px-4 mt-1 flex gap-2">
-              <button
-                v-for="s in tripStore.shortcuts"
-                :key="s.id"
+              <button v-for="s in tripStore.shortcuts" :key="s.id"
                 class="px-3 py-1 bg-white text-primary-500 font-bold rounded-full border-2 border-primary-300 shadow-sm"
-                @click="() => applyShortcut(s)"
-              >
+                @click="() => applyShortcut(s)">
                 {{ s.name }}
               </button>
             </div>
@@ -1463,32 +1480,21 @@ const replanRoute = () => {
             <!-- 起點 / 目的地 輸入 -->
             <div class="px-4 mt-3">
               <div
-                class="sheet-card flex flex-row items-center justify-center rounded-xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] p-2 gap-2"
-              >
+                class="sheet-card flex flex-row items-center justify-center rounded-xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] p-2 gap-2">
                 <!--  兩個icon切換 依照 selectedDest 來切換 -->
                 <div class="w-7 grid" style="min-height: 28px">
                   <!-- route-icon -->
-                  <img
-                    src="@/assets/images/route-icon.svg"
-                    class="w-7 h-auto icon-transition"
-                    style="grid-area: 1/1"
+                  <img src="@/assets/images/route-icon.svg" class="w-7 h-auto icon-transition" style="grid-area: 1/1"
                     :class="{
                       'z-20 icon-ease-in': selectedDest,
                       'z-0 icon-ease-out': !selectedDest
-                    }"
-                    alt=""
-                  />
+                    }" alt="" />
                   <!-- route-icon-reverted -->
-                  <img
-                    src="@/assets/images/route-icon-reverted.svg"
-                    class="w-7 h-auto icon-transition"
-                    style="grid-area: 1/1"
-                    :class="{
+                  <img src="@/assets/images/route-icon-reverted.svg" class="w-7 h-auto icon-transition"
+                    style="grid-area: 1/1" :class="{
                       'z-20 icon-ease-in': !selectedDest,
                       'z-0 icon-ease-out': selectedDest
-                    }"
-                    alt=""
-                  />
+                    }" alt="" />
                 </div>
                 <div class="flex flex-col items-center justify-center w-full relative">
                   <!-- Sliding background -->
@@ -1496,58 +1502,36 @@ const replanRoute = () => {
                     class="absolute top-0 left-0 w-full h-[calc(50%-0.125rem)] rounded-lg bg-primary-50 transition-transform duration-300 ease-in-out"
                     :style="{
                       transform: selectedDest ? 'translateY(calc(100% + 0.25rem))' : 'translateY(0)'
-                    }"
-                  ></div>
-                  <div
-                    class="rounded-lg p-2 cursor-pointer w-full relative z-10 transition-colors duration-300"
-                    :class="{
-                      // 'border-2 border-primary-500': !selectedDest,
-                      // 'border-2 border-transparent': selectedDest
-                    }"
-                    @click="
-                      selectedDest = false;
-                      originInputEl && originInputEl.focus();
-                    "
-                  >
+                    }"></div>
+                  <div class="rounded-lg p-2 cursor-pointer w-full relative z-10 transition-colors duration-300" :class="{
+                    // 'border-2 border-primary-500': !selectedDest,
+                    // 'border-2 border-transparent': selectedDest
+                  }" @click="
+                    selectedDest = false;
+                  originInputEl && originInputEl.focus();
+                  ">
                     <div class="text-sm text-grey-700">起始站</div>
-                    <input
-                      ref="originInputEl"
-                      v-model="originInput"
-                      placeholder="點按以選擇起始站"
-                      class="w-full bg-transparent outline-none"
-                      @click.stop="selectedDest = false"
-                      @keydown.enter.prevent
-                    />
+                    <input ref="originInputEl" v-model="originInput" placeholder="點按以選擇起始站"
+                      class="w-full bg-transparent outline-none" @click.stop="selectedDest = false"
+                      @keydown.enter.prevent />
                   </div>
                   <!-- <div class="mx-2 h-0.5 w-full bg-grey-200"></div> -->
-                  <div
-                    class="rounded-lg p-2 mx-2 cursor-pointer w-full relative z-10 transition-colors duration-300"
+                  <div class="rounded-lg p-2 mx-2 cursor-pointer w-full relative z-10 transition-colors duration-300"
                     :class="{
                       // 'border-2 border-primary-500': selectedDest,
                       // 'border-2 border-transparent': !selectedDest
-                    }"
-                    @click="
+                    }" @click="
                       selectedDest = true;
-                      destinationInputEl && destinationInputEl.focus();
-                    "
-                  >
+                    destinationInputEl && destinationInputEl.focus();
+                    ">
                     <div class="text-sm text-grey-700">終點站</div>
-                    <input
-                      ref="destinationInputEl"
-                      v-model="destinationInput"
-                      placeholder="點按以選擇終點站"
-                      class="w-full bg-transparent outline-none"
-                      @click.stop="selectedDest = true"
-                      @keydown.enter.prevent
-                    />
+                    <input ref="destinationInputEl" v-model="destinationInput" placeholder="點按以選擇終點站"
+                      class="w-full bg-transparent outline-none" @click.stop="selectedDest = true"
+                      @keydown.enter.prevent />
                   </div>
                 </div>
-                <img
-                  src="@/assets/images/icon-switch.svg"
-                  class="w-7 h-auto cursor-pointer"
-                  alt=""
-                  @click="onSwitchOriginDestination"
-                />
+                <img src="@/assets/images/icon-switch.svg" class="w-7 h-auto cursor-pointer" alt=""
+                  @click="onSwitchOriginDestination" />
               </div>
             </div>
 
@@ -1561,51 +1545,31 @@ const replanRoute = () => {
                   :style="{
                     width: 'calc(50% - 0.125rem)',
                     left: activeList === 'history' ? '0.25rem' : 'calc(50% - 0.125rem)'
-                  }"
-                ></div>
+                  }"></div>
                 <button
                   class="flex-1 flex items-center justify-center py-2 rounded-full font-bold relative z-10 transition-colors duration-500"
                   :class="{
                     'text-white': activeList === 'history',
                     'text-grey-600': activeList !== 'history'
-                  }"
-                  @click="activeList = 'history'"
-                >
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    class="w-5 h-5 mr-1 fill-current"
-                    :class="{
-                      'text-primary-500': activeList === 'history',
-                      'text-grey-600': activeList !== 'history'
-                    }"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <mask
-                      id="mask0_2068_2082"
-                      style="mask-type: alpha"
-                      maskUnits="userSpaceOnUse"
-                      x="0"
-                      y="0"
-                      width="24"
-                      height="24"
-                    >
+                  }" @click="activeList = 'history'">
+                  <svg width="24" height="24" viewBox="0 0 24 24" class="w-5 h-5 mr-1 fill-current" :class="{
+                    'text-primary-500': activeList === 'history',
+                    'text-grey-600': activeList !== 'history'
+                  }" xmlns="http://www.w3.org/2000/svg">
+                    <mask id="mask0_2068_2082" style="mask-type: alpha" maskUnits="userSpaceOnUse" x="0" y="0"
+                      width="24" height="24">
                       <rect width="24" height="24" fill="currentColor" />
                     </mask>
                     <g mask="url(#mask0_2068_2082)">
                       <path
                         d="M12 21C9.7 21 7.69583 20.2375 5.9875 18.7125C4.27917 17.1875 3.3 15.2833 3.05 13H5.1C5.33333 14.7333 6.10417 16.1667 7.4125 17.3C8.72083 18.4333 10.25 19 12 19C13.95 19 15.6042 18.3208 16.9625 16.9625C18.3208 15.6042 19 13.95 19 12C19 10.05 18.3208 8.39583 16.9625 7.0375C15.6042 5.67917 13.95 5 12 5C10.85 5 9.775 5.26667 8.775 5.8C7.775 6.33333 6.93333 7.06667 6.25 8H9V10H3V4H5V6.35C5.85 5.28333 6.8875 4.45833 8.1125 3.875C9.3375 3.29167 10.6333 3 12 3C13.25 3 14.4208 3.2375 15.5125 3.7125C16.6042 4.1875 17.5542 4.82917 18.3625 5.6375C19.1708 6.44583 19.8125 7.39583 20.2875 8.4875C20.7625 9.57917 21 10.75 21 12C21 13.25 20.7625 14.4208 20.2875 15.5125C19.8125 16.6042 19.1708 17.5542 18.3625 18.3625C17.5542 19.1708 16.6042 19.8125 15.5125 20.2875C14.4208 20.7625 13.25 21 12 21ZM14.8 16.2L11 12.4V7H13V11.6L16.2 14.8L14.8 16.2Z"
-                        fill="currentColor"
-                      />
+                        fill="currentColor" />
                     </g>
                   </svg>
-                  <span
-                    :class="{
-                      'text-primary-500': activeList === 'history',
-                      'text-grey-600': activeList !== 'history'
-                    }"
-                  >
+                  <span :class="{
+                    'text-primary-500': activeList === 'history',
+                    'text-grey-600': activeList !== 'history'
+                  }">
                     歷史站點
                   </span>
                 </button>
@@ -1614,65 +1578,41 @@ const replanRoute = () => {
                   :class="{
                     'text-white': activeList === 'favorite',
                     'text-grey-600': activeList !== 'favorite'
-                  }"
-                  @click="activeList = 'favorite'"
-                >
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    class="w-5 h-5 mr-1 fill-current"
-                    :class="{
-                      'text-primary-500': activeList === 'favorite',
-                      'text-grey-600': activeList !== 'favorite'
-                    }"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
+                  }" @click="activeList = 'favorite'">
+                  <svg width="24" height="24" viewBox="0 0 24 24" class="w-5 h-5 mr-1 fill-current" :class="{
+                    'text-primary-500': activeList === 'favorite',
+                    'text-grey-600': activeList !== 'favorite'
+                  }" xmlns="http://www.w3.org/2000/svg">
                     <path
                       d="M11.245 4.32326C11.4765 3.65734 11.5922 3.32439 11.7634 3.23211C11.9115 3.15224 12.0898 3.15224 12.238 3.23211C12.4091 3.32439 12.5248 3.65734 12.7563 4.32326L14.2866 8.72565C14.3525 8.91518 14.3854 9.00994 14.4448 9.08051C14.4972 9.14285 14.5641 9.19144 14.6396 9.22204C14.725 9.25669 14.8253 9.25873 15.0259 9.26282L19.6857 9.35778C20.3906 9.37214 20.743 9.37933 20.8837 9.51358C21.0054 9.62977 21.0605 9.7994 21.0303 9.96495C20.9955 10.1563 20.7146 10.3692 20.1528 10.7952L16.4387 13.6109C16.2788 13.7322 16.1989 13.7928 16.1501 13.871C16.107 13.9402 16.0815 14.0188 16.0757 14.1C16.0692 14.192 16.0982 14.288 16.1563 14.4801L17.506 18.9412C17.7101 19.616 17.8122 19.9534 17.728 20.1286C17.6551 20.2803 17.5108 20.3851 17.344 20.4076C17.1513 20.4335 16.862 20.2322 16.2833 19.8295L12.4576 17.1674C12.2929 17.0528 12.2106 16.9955 12.1211 16.9732C12.042 16.9536 11.9593 16.9536 11.8803 16.9732C11.7908 16.9955 11.7084 17.0528 11.5437 17.1674L7.71805 19.8295C7.13937 20.2322 6.85003 20.4335 6.65733 20.4076C6.49056 20.3851 6.34626 20.2803 6.27337 20.1286C6.18915 19.9534 6.29123 19.616 6.49538 18.9412L7.84503 14.4801C7.90313 14.288 7.93218 14.192 7.92564 14.1C7.91986 14.0188 7.89432 13.9402 7.85123 13.871C7.80246 13.7928 7.72251 13.7322 7.56262 13.6109L3.84858 10.7952C3.28678 10.3692 3.00588 10.1563 2.97101 9.96495C2.94082 9.7994 2.99594 9.62977 3.11767 9.51358C3.25831 9.37933 3.61074 9.37215 4.31559 9.35778L8.9754 9.26282C9.176 9.25873 9.27631 9.25669 9.36177 9.22204C9.43726 9.19144 9.50414 9.14285 9.55657 9.08051C9.61593 9.00994 9.64887 8.91518 9.71475 8.72565L11.245 4.32326Z"
-                      stroke="#D9D9D9"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
+                      stroke="#D9D9D9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
-                  <span
-                    :class="{
-                      'text-primary-500': activeList === 'favorite',
-                      'text-grey-600': activeList !== 'favorite'
-                    }"
-                  >
+                  <span :class="{
+                    'text-primary-500': activeList === 'favorite',
+                    'text-grey-600': activeList !== 'favorite'
+                  }">
                     常用行程
                   </span>
                 </button>
               </div>
 
-              <ul
-                class="overflow-y-auto divide-y divide-grey-200"
-                :style="{ maxHeight: sheetHeight - 240 + 'px' }"
-              >
+              <ul class="overflow-y-auto divide-y divide-grey-200" :style="{ maxHeight: sheetHeight - 240 + 'px' }">
                 <template v-if="activeList === 'history'">
-                  <li
-                    v-for="h in tripStore.histories"
-                    :key="h.id"
-                    class="py-3 cursor-pointer"
-                    @click="() => applyHistoryStation(h)"
-                  >
+                  <li v-for="h in tripStore.histories" :key="h.id" class="py-3 cursor-pointer"
+                    @click="() => applyHistoryStation(h)">
                     <div>
                       <div class="text-grey-900 font-extrabold">
                         {{ h.place?.name }}
                       </div>
                       <div class="text-grey-500 text-sm flex items-center">
-                        <span
-                          v-if="
-                            distanceKm(
-                              currentLocation.lat,
-                              currentLocation.lng,
-                              Number(spotById(h.id)?.lat as any),
-                              Number(spotById(h.id)?.lng as any)
-                            ) !== null
-                          "
-                        >
+                        <span v-if="
+                          distanceKm(
+                            currentLocation.lat,
+                            currentLocation.lng,
+                            Number(spotById(h.id)?.lat as any),
+                            Number(spotById(h.id)?.lng as any)
+                          ) !== null
+                        ">
                           {{
                             distanceKm(
                               currentLocation.lat,
@@ -1685,23 +1625,15 @@ const replanRoute = () => {
                         </span>
                         <span class="mx-2">|</span>
                         <span class="flex">
-                          <template
-                            v-if="
-                              (spotById(h.id)?.available_rent_bikes ?? 0) !== 0 &&
-                              (spotById(h.id)?.available_return_bikes ?? 0) !== 0
-                            "
-                          >
-                            <img
-                              src="/public/images/map/youbike/icon-info-ubike-green.svg"
-                              alt=""
-                            />
+                          <template v-if="
+                            (spotById(h.id)?.available_rent_bikes ?? 0) !== 0 &&
+                            (spotById(h.id)?.available_return_bikes ?? 0) !== 0
+                          ">
+                            <img src="/public/images/map/youbike/icon-info-ubike-green.svg" alt="" />
                             <span class="ml-1 text-[#76A732]">正常租借</span>
                           </template>
                           <template v-else-if="(spotById(h.id)?.available_rent_bikes ?? 0) === 0">
-                            <img
-                              src="/public/images/map/youbike/icon-info-ubike-yellow.svg"
-                              alt=""
-                            />
+                            <img src="/public/images/map/youbike/icon-info-ubike-yellow.svg" alt="" />
                             <span class="ml-1 text-secondary-500">無車可借</span>
                           </template>
                           <template v-else-if="(spotById(h.id)?.available_return_bikes ?? 0) === 0">
@@ -1712,24 +1644,17 @@ const replanRoute = () => {
                         <span class="mx-2">|</span>
                         <span>
                           <span class="text-grey-500 mr-1">可借</span>
-                          <span
-                            class="mr-1"
-                            :class="
-                              (spotById(h.id)?.available_rent_bikes ?? 0) === 0
-                                ? 'text-secondary-500'
-                                : 'text-[#76A732]'
-                            "
-                          >
+                          <span class="mr-1" :class="(spotById(h.id)?.available_rent_bikes ?? 0) === 0
+                            ? 'text-secondary-500'
+                            : 'text-[#76A732]'
+                            ">
                             {{ spotById(h.id)?.available_rent_bikes ?? 0 }}
                           </span>
                           <span class="text-grey-500 mr-1">可停</span>
-                          <span
-                            :class="
-                              (spotById(h.id)?.available_return_bikes ?? 0) === 0
-                                ? 'text-[#E5464B]'
-                                : 'text-grey-950'
-                            "
-                          >
+                          <span :class="(spotById(h.id)?.available_return_bikes ?? 0) === 0
+                            ? 'text-[#E5464B]'
+                            : 'text-grey-950'
+                            ">
                             {{ spotById(h.id)?.available_return_bikes ?? 0 }}
                           </span>
                         </span>
@@ -1741,20 +1666,12 @@ const replanRoute = () => {
                   </li>
                 </template>
                 <template v-else>
-                  <li
-                    v-for="f in tripStore.favorites"
-                    :key="f.id"
-                    class="relative overflow-hidden cursor-pointer"
-                    @click="onFavoriteItemClick(f)"
-                  >
+                  <li v-for="f in tripStore.favorites" :key="f.id" class="relative overflow-hidden cursor-pointer"
+                    @click="onFavoriteItemClick(f)">
                     <!-- Delete Underlay -->
-                    <div
-                      class="absolute inset-0 flex items-center rounded-lg justify-end pr-4 bg-primary-100"
-                    >
-                      <button
-                        class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
-                        @click.stop="onEditById(f.id)"
-                      >
+                    <div class="absolute inset-0 flex items-center rounded-lg justify-end pr-4 bg-primary-100">
+                      <button class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
+                        @click.stop="onEditById(f.id)">
                         <img src="@/assets/images/icon-edit.svg" class="w-5 h-5" />
                       </button>
                     </div>
@@ -1765,17 +1682,11 @@ const replanRoute = () => {
                       :style="{
                         transform: `translateX(${favoriteSwipeX[f.id] || 0}px)`,
                         transition: favoriteTransition[f.id] ? 'transform 180ms ease' : 'none'
-                      }"
-                      @pointerdown="onFavPointerDown($event, f.id)"
-                      @pointermove="onFavPointerMove($event, f.id)"
-                      @pointerup="onFavPointerUp($event, f.id)"
-                      @pointercancel="onFavPointerUp($event, f.id)"
-                      @pointerleave="onFavPointerUp($event, f.id)"
-                      @touchstart="onFavTouchStart($event, f.id)"
-                      @touchmove="onFavTouchMove($event, f.id)"
-                      @touchend="onFavTouchEnd($event, f.id)"
-                      @touchcancel="onFavTouchEnd($event, f.id)"
-                    >
+                      }" @pointerdown="onFavPointerDown($event, f.id)" @pointermove="onFavPointerMove($event, f.id)"
+                      @pointerup="onFavPointerUp($event, f.id)" @pointercancel="onFavPointerUp($event, f.id)"
+                      @pointerleave="onFavPointerUp($event, f.id)" @touchstart="onFavTouchStart($event, f.id)"
+                      @touchmove="onFavTouchMove($event, f.id)" @touchend="onFavTouchEnd($event, f.id)"
+                      @touchcancel="onFavTouchEnd($event, f.id)">
                       <div>
                         <div class="text-grey-900 font-extrabold">{{ f.name }}</div>
                         <div class="text-grey-500 text-sm flex items-center">
@@ -1792,8 +1703,7 @@ const replanRoute = () => {
                   <li class="py-4">
                     <button
                       class="w-full flex items-center justify-center gap-2 bg-primary-100 text-primary-600 rounded-full py-3 shadow"
-                      @click="() => (showFavoriteDialog = true)"
-                    >
+                      @click="() => (showFavoriteDialog = true)">
                       <img src="@/assets/images/icon-add.svg" class="w-4 h-4" />
                       <span class="font-bold text-primary-500">新增常用行程</span>
                     </button>
@@ -1805,11 +1715,8 @@ const replanRoute = () => {
         </div>
       </div>
       <!-- 選取的點 -->
-      <div
-        v-if="selectedSpot"
-        class="floating-box bottom-24 left-[50%] translate-x-[-50%] w-[90%]"
-        :style="{ bottom: sheetHeight + 10 + 'px', top: 'auto' }"
-      >
+      <div v-if="selectedSpot" class="floating-box bottom-24 left-[50%] translate-x-[-50%] w-[90%]"
+        :style="{ bottom: sheetHeight + 10 + 'px', top: 'auto' }">
         <div>
           <!-- title -->
           <div class="flex items-center mb-2">
@@ -1823,12 +1730,10 @@ const replanRoute = () => {
             <span>{{ selectedSpot.distance }}公里</span>
             <span class="mx-2">|</span>
             <span class="flex">
-              <template
-                v-if="
-                  selectedSpot.available_rent_bikes !== 0 &&
-                  selectedSpot.available_return_bikes !== 0
-                "
-              >
+              <template v-if="
+                selectedSpot.available_rent_bikes !== 0 &&
+                selectedSpot.available_return_bikes !== 0
+              ">
                 <img src="/public/images/map/youbike/icon-info-ubike-green.svg" alt="" />
                 <span class="ml-1 text-[#76A732]">正常租借</span>
               </template>
@@ -1844,20 +1749,13 @@ const replanRoute = () => {
             <span class="mx-2">|</span>
             <span>
               <span class="text-grey-500 mr-1">可借</span>
-              <span
-                class="mr-1"
-                :class="
-                  selectedSpot.available_rent_bikes === 0 ? 'text-secondary-500' : 'text-[#76A732]'
-                "
-              >
+              <span class="mr-1" :class="selectedSpot.available_rent_bikes === 0 ? 'text-secondary-500' : 'text-[#76A732]'
+                ">
                 {{ selectedSpot.available_rent_bikes }}
               </span>
               <span class="text-grey-500 mr-1">可停</span>
-              <span
-                :class="
-                  selectedSpot.available_return_bikes === 0 ? 'text-[#E5464B]' : 'text-grey-950'
-                "
-              >
+              <span :class="selectedSpot.available_return_bikes === 0 ? 'text-[#E5464B]' : 'text-grey-950'
+                ">
                 {{ selectedSpot.available_return_bikes }}
               </span>
             </span>
@@ -1886,16 +1784,8 @@ const replanRoute = () => {
   </MessageModal>
 
   <!-- 新增常用行程 Dialog -->
-  <BaseDialog
-    v-model="showFavoriteDialog"
-    is-slot
-    content=""
-    positive-text="儲存"
-    negative-text="刪除"
-    is-favorite-dialog
-    @onPositiveClick="saveFavorite"
-    @onNegativeClick="deleteFavorite"
-  >
+  <BaseDialog v-model="showFavoriteDialog" is-slot content="" positive-text="儲存" negative-text="刪除" is-favorite-dialog
+    @onPositiveClick="saveFavorite" @onNegativeClick="deleteFavorite">
     <template #content>
       <div class="favorite-dialog-content">
         <!-- 標題 -->
@@ -1905,40 +1795,19 @@ const replanRoute = () => {
         <div class="favorite-dialog-form">
           <div class="favorite-dialog-field">
             <label class="favorite-dialog-label">行程名稱</label>
-            <input
-              v-model="newFavoriteName"
-              type="text"
-              placeholder="如:回溫暖ㄉ家"
-              class="favorite-dialog-input"
-            />
+            <input v-model="newFavoriteName" type="text" placeholder="如:回溫暖ㄉ家" class="favorite-dialog-input" />
           </div>
           <div class="favorite-dialog-field">
             <label class="favorite-dialog-label">起始點</label>
-            <input
-              :value="favoriteOriginName"
-              type="text"
-              placeholder="點選以輸入"
-              class="favorite-dialog-input"
-              readonly
-            />
+            <input :value="favoriteOriginName" type="text" placeholder="點選以輸入" class="favorite-dialog-input" readonly />
           </div>
           <div class="favorite-dialog-field">
             <label class="favorite-dialog-label">終點站</label>
-            <input
-              :value="favoriteDestinationName"
-              type="text"
-              placeholder="點選以輸入"
-              class="favorite-dialog-input"
-              readonly
-            />
+            <input :value="favoriteDestinationName" type="text" placeholder="點選以輸入" class="favorite-dialog-input"
+              readonly />
           </div>
           <div class="favorite-dialog-checkbox">
-            <input
-              id="pinHome"
-              type="checkbox"
-              v-model="pinToHome"
-              class="favorite-dialog-checkbox-input"
-            />
+            <input id="pinHome" type="checkbox" v-model="pinToHome" class="favorite-dialog-checkbox-input" />
             <label for="pinHome" class="favorite-dialog-checkbox-label">釘選至主頁</label>
           </div>
         </div>
@@ -2001,7 +1870,8 @@ const replanRoute = () => {
   text-align: center;
   font-size: 1.25rem;
   font-weight: 800;
-  color: #171b1d; /* grey-900 */
+  color: #171b1d;
+  /* grey-900 */
   padding: 20px 16px 16px 16px;
   margin: 0;
 }
@@ -2022,7 +1892,8 @@ const replanRoute = () => {
 .favorite-dialog-label {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #171b1d; /* grey-900 */
+  color: #171b1d;
+  /* grey-900 */
   text-align: left;
 }
 
@@ -2030,14 +1901,16 @@ const replanRoute = () => {
   width: 100%;
   padding: 10px 12px;
   background-color: white;
-  border: 1px solid #adb8be; /* grey-300 */
+  border: 1px solid #adb8be;
+  /* grey-300 */
   border-radius: 8px;
   font-size: 0.875rem;
   outline: none;
 }
 
 .favorite-dialog-input::placeholder {
-  color: #adb8be; /* grey-300 */
+  color: #adb8be;
+  /* grey-300 */
 }
 
 .favorite-dialog-checkbox {
@@ -2060,7 +1933,8 @@ const replanRoute = () => {
 }
 
 .favorite-dialog-checkbox-input:checked {
-  background-color: #2eb6c7; /* primary-500 */
+  background-color: #2eb6c7;
+  /* primary-500 */
   border-color: #2eb6c7;
 }
 
@@ -2078,7 +1952,8 @@ const replanRoute = () => {
 .favorite-dialog-checkbox-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #2eb6c7; /* grey-900 */
+  color: #2eb6c7;
+  /* grey-900 */
   cursor: pointer;
 }
 

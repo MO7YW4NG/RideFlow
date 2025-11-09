@@ -28,4 +28,10 @@
     @apply flex justify-center items-center;
     @apply -translate-x-1;
   }
+
+  /* Safari 專用修復：防止 body width 在滾動鎖定時縮小 */
+  .safari-scroll-lock {
+    width: 100vw !important;
+    overflow-x: hidden;
+  }
 }

@@ -173,7 +173,7 @@ const startRide = () => {
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originEncoded}&destination=${destinationEncoded}&travelmode=bicycling&map_action=map`;
   
   // 在新標籤頁中打開 Google Maps
-  window.location.href = googleMapsUrl;
+  window.open(googleMapsUrl, '_blank');
 };
 
 // 根據適合度返回文字顏色
@@ -597,7 +597,7 @@ onMounted(() => {
             class="px-4 py-2 rounded-lg text-sm font-medium"
             :class="
                 tag.level === 'good'
-                ? 'bg-[#E8F5E9] text-[#76A732]'
+                ? 'bg-[#d5e4c1] text-[#76A732]'
                 : tag.level === 'normal'
                 ? 'bg-primary-100 text-primary-600'
                 : 'bg-orange-100 text-orange-600'

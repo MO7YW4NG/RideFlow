@@ -479,6 +479,9 @@ const isSafari = (): boolean => {
   );
 };
 
+// Safari 專用：保存滾動位置
+let savedScrollPosition = 0;
+
 // 鎖定背景捲動：面板在中段/全展時鎖住 body，收合時解除
 watch(sheetHeight, (h) => {
   const target = sheetRef.value as HTMLElement | null;
@@ -487,15 +490,29 @@ watch(sheetHeight, (h) => {
   setMapHeight();
   if (h > sheetMin.value + 10) {
     disableBodyScroll(target, { reserveScrollBarGap: true });
-    // Safari 專用修復：添加 class 來防止 body width 縮小
+    // Safari 專用修復：防止 body width 縮小
     if (isSafari()) {
+      // 保存當前滾動位置
+      savedScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+      // 同時鎖定 html 和 body
+      document.documentElement.classList.add('safari-scroll-lock');
       document.body.classList.add('safari-scroll-lock');
+      // 設置滾動位置，防止跳動
+      document.documentElement.style.top = `-${savedScrollPosition}px`;
+      document.body.style.top = `-${savedScrollPosition}px`;
     }
   } else {
     enableBodyScroll(target);
-    // Safari 專用修復：移除 class
+    // Safari 專用修復：恢復
     if (isSafari()) {
+      // 恢復滾動位置
+      document.documentElement.style.top = '';
+      document.body.style.top = '';
+      // 移除 class
+      document.documentElement.classList.remove('safari-scroll-lock');
       document.body.classList.remove('safari-scroll-lock');
+      // 恢復滾動位置
+      window.scrollTo(0, savedScrollPosition);
     }
   }
 });
@@ -514,9 +531,13 @@ watch(isRouteReady, (ready) => {
 onUnmounted(() => {
   const target = sheetRef.value as HTMLElement | null;
   if (target) enableBodyScroll(target);
-  // 確保在組件卸載時移除 Safari 修復 class
+  // 確保在組件卸載時移除 Safari 修復
   if (isSafari()) {
+    document.documentElement.style.top = '';
+    document.body.style.top = '';
+    document.documentElement.classList.remove('safari-scroll-lock');
     document.body.classList.remove('safari-scroll-lock');
+    window.scrollTo(0, savedScrollPosition);
   }
 });
 

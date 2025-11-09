@@ -1386,7 +1386,7 @@ const replanRoute = () => {
         <!-- 底部面板：上車囉/今天去哪玩？、快捷、起迄輸入、歷史與常用 -->
         <div
           ref="sheetRef"
-          class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl w-full shadow-[0_-4px_10px_rgba(0,0,0,0.04)] overflow-hidden"
+          class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl w-full shadow-[0_-4px_10px_rgba(0,0,0,0.04)] overflow-y-hidden"
           :style="{ height: sheetHeight + 'px' }"
         >
           <!-- drag handle -->

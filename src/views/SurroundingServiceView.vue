@@ -1371,8 +1371,9 @@ const replanRoute = () => {
 
 <template>
   <div class="h-screen">
+    <div>
       <!-- 地圖 -->
-      <div class="relative flex-1 h-full overflow-y-hidden overflow-x-hidden">
+      <div class="relative flex-1 h-full overflow-y-hidden">
         <div class="google-map" id="map"></div>
         <div
           v-if="isMapReady"
@@ -1386,7 +1387,7 @@ const replanRoute = () => {
         <!-- 底部面板：上車囉/今天去哪玩？、快捷、起迄輸入、歷史與常用 -->
         <div
           ref="sheetRef"
-          class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl w-full shadow-[0_-4px_10px_rgba(0,0,0,0.04)] overflow-y-hidden"
+          class="bg-white rounded-t-2xl w-full shadow-[0_-4px_10px_rgba(0,0,0,0.04)]"
           :style="{ height: sheetHeight + 'px' }"
         >
           <!-- drag handle -->
@@ -1844,6 +1845,7 @@ const replanRoute = () => {
           <img src="@/assets/images/icon-right.svg" class="w-xl h-xl" alt="" />
         </button>
       </div>
+    </div>
   </div>
 
   <!-- geo modal -->

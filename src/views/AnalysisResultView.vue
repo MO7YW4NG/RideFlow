@@ -151,7 +151,7 @@ const replanRoute = () => {
 // 跳轉到道路施工資訊頁面
 const goToRoadConstruction = () => {
   const constructionMapUrl = 'https://dig.taipei/Tpdig/Map/ShowPublic.aspx';
-  window.location.href = constructionMapUrl;
+  window.open(constructionMapUrl, '_blank');
 };
 
 // 開始騎乘 - 跳轉到 Google Maps 路線規劃

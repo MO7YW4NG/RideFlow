@@ -405,7 +405,7 @@ const isRouteReady = computed(() => {
 const sheetRef = ref<HTMLElement | null>(null);
 const sheetHeight = ref(0);
 // 當路線準備好時，使用較小的最小高度（約140px，足夠顯示兩個按鈕）
-const sheetMin = computed(() => (isRouteReady.value ? 140 : 260));
+const sheetMin = computed(() => (isRouteReady.value ? 140 : 270));
 const sheetMid = ref(0); // 視窗 50%
 const sheetMax = ref(0); // 視窗 85%
 const isDraggingSheet = ref(false);
@@ -1387,13 +1387,13 @@ const replanRoute = () => {
         <!-- 底部面板：上車囉/今天去哪玩？、快捷、起迄輸入、歷史與常用 -->
         <div
           ref="sheetRef"
-          class="bg-white rounded-t-2xl shadow-[0_-4px_10px_rgba(0,0,0,0.04)]"
+          class="bg-white rounded-t-2xl w-full shadow-[0_-4px_10px_rgba(0,0,0,0.04)]"
           :style="{ height: sheetHeight + 'px' }"
         >
           <!-- drag handle -->
           <div
             v-if="!isRouteReady"
-            class="w-full flex items-center justify-center pt-2 cursor-grab select-none"
+            class="w-full flex items-center justify-center py-2.5 cursor-grab select-none"
             @mousedown="onHandleMouseDown"
             @touchstart="onHandleTouchStart"
           >

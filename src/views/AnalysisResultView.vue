@@ -170,10 +170,10 @@ const startRide = () => {
   // 使用 encodeURIComponent 對站名進行編碼，確保 URL 正確
   const originEncoded = encodeURIComponent(origin);
   const destinationEncoded = encodeURIComponent(destination);
-  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originEncoded}&destination=${destinationEncoded}&travelmode=bicycling`;
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originEncoded}&destination=${destinationEncoded}&travelmode=bicycling&map_action=map`;
   
   // 在新標籤頁中打開 Google Maps
-  window.open(googleMapsUrl, '_blank');
+  window.location.href = googleMapsUrl;
 };
 
 // 根據適合度返回文字顏色

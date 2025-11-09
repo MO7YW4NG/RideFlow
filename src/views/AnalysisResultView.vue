@@ -166,35 +166,14 @@ const startRide = () => {
     return;
   }
   
+  // 構建 Google Maps 路線規劃 URL
   // 使用 encodeURIComponent 對站名進行編碼，確保 URL 正確
   const originEncoded = encodeURIComponent(origin);
   const destinationEncoded = encodeURIComponent(destination);
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originEncoded}&destination=${destinationEncoded}&travelmode=bicycling`;
   
-  // 使用 comgooglemaps:// 協議，支援 Flutter 和移動設備
-  // 格式：comgooglemaps://?directionsmode=模式&destination=終點&origin=起點
-  const googleMapsDeepLink = `comgooglemaps://?directionsmode=bicycling&destination=${destinationEncoded}&origin=${originEncoded}`;
-  const googleMapsWebUrl = `https://www.google.com/maps/dir/?api=1&origin=${originEncoded}&destination=${destinationEncoded}&travelmode=bicycling`;
-  
-  // 嘗試使用深度連結（適用於 Flutter WebView 和移動設備）
-  // 如果深度連結不可用（例如在普通 Web 瀏覽器中），則回退到 Web URL
-  try {
-    // 直接嘗試跳轉到深度連結
-    window.location.href = googleMapsDeepLink;
-    
-    // 設置超時，如果深度連結無法處理（例如在 Web 瀏覽器中），則回退到 Web URL
-    setTimeout(() => {
-      // 如果頁面沒有被導航（深度連結失敗），則使用 Web URL
-      // 注意：這是一個簡單的回退機制，在 Flutter WebView 中應該會成功跳轉
-      if (document.visibilityState === 'visible') {
-        // 如果頁面仍然可見，可能深度連結失敗，使用 Web URL
-        window.location.href = googleMapsWebUrl;
-      }
-    }, 1000);
-  } catch (error) {
-    // 如果出錯，直接使用 Web URL
-    console.warn('深度連結不可用，使用 Web URL:', error);
-    window.location.href = googleMapsWebUrl;
-  }
+  // 在新標籤頁中打開 Google Maps
+  window.open(googleMapsUrl, '_blank');
 };
 
 // 根據適合度返回文字顏色
